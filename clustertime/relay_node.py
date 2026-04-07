@@ -1,0 +1,164 @@
+"""Relay node orchestration.
+
+A relay node runs two ptp4l instances:
+
+  ptp4l-upstream   — unicast slave to the master node.
+                     Syncs CLOCK_REALTIME via software timestamping.
+
+  ptp4l-downstream — multicast master to local PTP clients.
+                     free_running=1: distributes the (already-synced)
+                     system clock without attempting further adjustment.
+
+For single-interface deployments, the network module creates two macvlan
+sub-interfaces before ptp4l is started so the two instances don't conflict
+on UDP ports 319/320.
+
+Phase 2 adds a MasterHealthMonitor that pings the master and logs failures.
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+from typing import Optional
+
+from .config import ClusterTimeConfig
+from .config_gen import generate_configs
+from .health_monitor import MasterHealthMonitor, SyncStateMonitor
+from .network import setup_relay_interfaces, teardown_relay_interfaces
+from .process_manager import ManagedProcess, ProcessManager
+
+log = logging.getLogger(__name__)
+
+_RESTART_COOLDOWN = 5
+_STATUS_INTERVAL = 30  # seconds between periodic status log lines
+
+
+def run_relay(cfg: ClusterTimeConfig) -> None:
+    log.info(
+        "Starting relay node | master=%s | interface=%s | dual_iface=%s | "
+        "failover=%s | domain=%d",
+        cfg.master.ip,
+        cfg.interface,
+        cfg.dual_interface,
+        cfg.failover.enabled,
+        cfg.ptp.domain,
+    )
+
+    # --- Network setup -------------------------------------------------------
+    up_iface, down_iface = setup_relay_interfaces(cfg)
+    log.info("Upstream interface: %s | Downstream interface: %s", up_iface, down_iface)
+
+    # --- Config files --------------------------------------------------------
+    paths = generate_configs(cfg)
+
+    # --- Sync state monitor (Phase 2 observability) --------------------------
+    sync_monitor = SyncStateMonitor("upstream")
+
+    # --- Process manager -----------------------------------------------------
+    mgr = ProcessManager()
+
+    mgr.add(
+        ManagedProcess(
+            name="ptp4l-upstream",
+            cmd=["/usr/sbin/ptp4l", "-f", paths["upstream"], "-m"],
+            log_prefix="ptp4l[upstream]",
+            line_callback=sync_monitor.process_line,
+        )
+    )
+    mgr.add(
+        ManagedProcess(
+            name="ptp4l-downstream",
+            cmd=["/usr/sbin/ptp4l", "-f", paths["downstream"], "-m"],
+            log_prefix="ptp4l[downstream]",
+        )
+    )
+
+    mgr.start_all()
+    log.info(
+        "Relay node running | upstream (unicast slave) → %s | "
+        "downstream (multicast master) → %s",
+        up_iface,
+        down_iface,
+    )
+
+    # --- Phase 2: master health monitoring -----------------------------------
+    health_monitor: Optional[MasterHealthMonitor] = None
+    if cfg.failover.enabled:
+        health_monitor = MasterHealthMonitor(
+            cfg,
+            on_failure=lambda: _on_master_failure(cfg),
+            on_recovered=lambda: log.warning(
+                "Master %s recovered — sync will resume automatically", cfg.master.ip
+            ),
+        )
+        health_monitor.start()
+    else:
+        log.info("Master health monitoring disabled (failover.enabled=false)")
+
+    # --- Watch loop ----------------------------------------------------------
+    try:
+        _watch_loop(mgr, sync_monitor)
+    finally:
+        if health_monitor:
+            health_monitor.stop()
+        teardown_relay_interfaces(cfg)
+
+
+def _watch_loop(mgr: ProcessManager, sync_monitor: SyncStateMonitor) -> None:
+    last_status = time.monotonic()
+    while True:
+        failed = mgr.any_exited()
+        if failed:
+            proc = mgr.get(failed)
+            log.error(
+                "Process '%s' exited (returncode=%s). Restarting in %ds...",
+                failed,
+                proc.returncode if proc else "?",
+                _RESTART_COOLDOWN,
+            )
+            time.sleep(_RESTART_COOLDOWN)
+            if proc:
+                proc.start()
+
+        now = time.monotonic()
+        if now - last_status >= _STATUS_INTERVAL:
+            _log_status(sync_monitor)
+            last_status = now
+
+        time.sleep(2)
+
+
+def _log_status(sync_monitor: SyncStateMonitor) -> None:
+    s = sync_monitor.status()
+    offset = s["master_offset_ns"]
+    offset_str = f"{offset:+d} ns" if offset is not None else "n/a"
+    log.info(
+        "Relay sync status | state=%s | master_offset=%s | path_delay=%s",
+        s["state"],
+        offset_str,
+        f"{s['path_delay_ns']} ns" if s["path_delay_ns"] is not None else "n/a",
+    )
+
+
+def _on_master_failure(cfg: ClusterTimeConfig) -> None:
+    log.error(
+        "MASTER FAILURE DETECTED: %s is unreachable. "
+        "Relay will continue serving downstream clients from local clock "
+        "(accuracy will degrade until master recovers).",
+        cfg.master.ip,
+    )
+
+    if cfg.failover.backup_masters:
+        log.warning(
+            "Backup masters configured: %s — "
+            "dynamic failover is not yet implemented (Phase 3). "
+            "Manual reconfiguration required.",
+            cfg.failover.backup_masters,
+        )
+
+    if cfg.failover.promote_to_master:
+        log.warning(
+            "promote_to_master=true is set but automatic promotion is not "
+            "yet implemented. The relay will hold its current clock state."
+        )
