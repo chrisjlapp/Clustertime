@@ -36,6 +36,8 @@ uds_address             /var/run/ptp4l_master
 
 [{iface}]
 masterOnly              1
+# Accept unicast negotiation requests from relay clients.
+unicast_listen          1
 """
 
 _RELAY_UPSTREAM_CONF = """\
