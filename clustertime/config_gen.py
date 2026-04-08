@@ -32,6 +32,7 @@ logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
 logAnnounceInterval     {announce_interval}
 domainNumber            {domain}
+ptp_minor_version       {minor_version}
 time_stamping           {time_stamping}
 twoStepFlag             1
 summary_interval        0
@@ -63,6 +64,7 @@ logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
 logAnnounceInterval     {announce_interval}
 domainNumber            {domain}
+ptp_minor_version       {minor_version}
 time_stamping           {time_stamping}
 twoStepFlag             1
 summary_interval        0
@@ -98,6 +100,7 @@ logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
 logAnnounceInterval     {announce_interval}
 domainNumber            {domain}
+ptp_minor_version       {minor_version}
 time_stamping           {time_stamping}
 twoStepFlag             1
 summary_interval        0
@@ -129,6 +132,7 @@ def generate_configs(
             transport=p.transport,
             domain=p.domain,
             sync_interval=p.sync_interval,
+            minor_version=p.minor_version,
             announce_interval=p.announce_interval,
             min_delay_req=p.min_delay_req_interval,
             unicast_req_duration=p.unicast_req_duration,
@@ -153,11 +157,12 @@ def generate_configs(
             transport=p.transport,
             domain=p.domain,
             sync_interval=p.sync_interval,
+            minor_version=p.minor_version,
             announce_interval=p.announce_interval,
             min_delay_req=p.min_delay_req_interval,
             unicast_req_duration=p.unicast_req_duration,
             master_ip=cfg.master.ip,
-            time_stamping=_resolve_time_stamping(p.time_stamping, up_iface),
+            time_stamping=_relay_time_stamping_for_iface(cfg, up_iface, role="upstream"),
         )
         up_path = os.path.join(conf_dir, "ptp4l_upstream.conf")
         _write(up_path, up_content)
@@ -168,9 +173,10 @@ def generate_configs(
             transport=p.transport,
             domain=p.domain,
             sync_interval=p.sync_interval,
+            minor_version=p.minor_version,
             announce_interval=p.announce_interval,
             min_delay_req=p.min_delay_req_interval,
-            time_stamping=_resolve_time_stamping(p.time_stamping, down_iface),
+            time_stamping=_relay_time_stamping_for_iface(cfg, down_iface, role="downstream"),
         )
         down_path = os.path.join(conf_dir, "ptp4l_downstream.conf")
         _write(down_path, down_content)
@@ -205,6 +211,34 @@ def _resolve_time_stamping(mode: str, iface: str) -> str:
         return "hardware"
     log.info("Interface %s does not expose hardware timestamping; using software", iface)
     return "software"
+
+
+def _relay_time_stamping_for_iface(cfg: ClusterTimeConfig, iface: str, role: str) -> str:
+    """
+    Resolve per-interface timestamping mode for relay roles.
+
+    Optional Raspberry Pi hybrid mode forces upstream to software timestamping
+    (to avoid missing RX timestamps) while leaving downstream behavior unchanged.
+    """
+    if cfg.ptp.rpi_hybrid_ts and role == "upstream" and _is_raspberry_pi():
+        log.warning(
+            "Raspberry Pi hybrid timestamping enabled: forcing upstream interface %s "
+            "to software timestamping",
+            iface,
+        )
+        return "software"
+    return _resolve_time_stamping(cfg.ptp.time_stamping, iface)
+
+
+def _is_raspberry_pi() -> bool:
+    model_file = pathlib.Path("/proc/device-tree/model")
+    try:
+        if model_file.exists():
+            model = model_file.read_text(errors="ignore").lower()
+            return "raspberry pi" in model
+    except Exception:  # pragma: no cover - defensive probe path
+        return False
+    return False
 
 
 def _supports_hardware_timestamping(iface: str) -> bool:
