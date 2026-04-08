@@ -1,7 +1,8 @@
 # Clustertime
 
 PTP Unicast-to-Multicast Relay Appliance. Clustertime bridges a PTPv2 unicast master to a multicast downstream network, enabling accurate time synchronization across cluster nodes.
-best results are with hardware timestamping on intel 225/226 nic series. Raspberry Pi5 provides realativly good results, but uses hybrid timestamping.
+
+Best results are with hardware timestamping on intel 225/226 nic series. Raspberry Pi5 provides realativly good results, but uses hybrid timestamping.
 
 ## Requirements
 
