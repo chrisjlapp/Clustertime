@@ -12,6 +12,12 @@ ptp:
   # Timestamping mode: auto|hardware|software
   # auto = use hardware when available on the interface, else software.
   time_stamping: auto
+  # Timeout (seconds) for waiting on tx timestamp before treating packet as failed.
+  tx_timestamp_timeout: 10
+  # TTL/hop-limit used by ptp4l for multicast UDP PTP packets.
+  multicast_ttl: 1
+  # TTL/hop-limit hint for unicast UDP PTP packets.
+  unicast_ttl: 1
   # Master BMCA priorities (0..255, lower wins)
   master_priority1: 128
   master_priority2: 128
