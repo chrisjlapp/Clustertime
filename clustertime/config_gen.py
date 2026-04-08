@@ -66,9 +66,11 @@ uds_address             /var/run/ptp4l_upstream
 [{iface}]
 unicast_master_table    1
 
-[unicast_master_table 1]
+[unicast_master_table]
+# linuxptp expects a generic unicast_master_table section with table_id set
+# inside the block (not in the section header).
+table_id                1
 # Keep the table entry minimal for compatibility with older linuxptp builds.
-# Some versions reject additional keys in this section and fail to start.
 UDPv4                   {master_ip}
 """
 
