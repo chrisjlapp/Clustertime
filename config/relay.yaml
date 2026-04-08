@@ -43,6 +43,9 @@ ptp:
   # Timestamping mode: auto|hardware|software
   # auto = use hardware when available on each interface, else software.
   time_stamping: auto
+  # Raspberry Pi relay hybrid mode:
+  # when true, upstream interface is forced to software timestamping on Pi.
+  rpi_hybrid_ts: false
   # PTP minor version: 0 (PTPv2.0, default) or 1 (PTPv2.1)
   minor_version: 0
   sync_interval: -3

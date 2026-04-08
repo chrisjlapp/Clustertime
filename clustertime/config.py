@@ -17,6 +17,7 @@ ENV vars (all prefixed CT_):
     CT_PTP_SYNC_INTERVAL   Sync interval as log2 (default: -3)
     CT_PTP_MINOR_VERSION   PTP minor version: 0 (PTPv2.0) or 1 (PTPv2.1) (default: 0)
     CT_PTP_TIME_STAMPING   software | hardware | auto (default: auto)
+    CT_PTP_RPI_HYBRID_TS   Enable Raspberry Pi relay hybrid mode (upstream software TS)
     CT_FAILOVER_ENABLED    Enable master health monitoring (default: false)
     CT_FAILOVER_TIMEOUT    Seconds before master declared failed (default: 10)
     CT_FAILOVER_PROMOTE    Promote self to master on failure (default: false)
@@ -41,6 +42,7 @@ class PTPConfig:
     min_delay_req_interval: int = 0
     unicast_req_duration: int = 300
     time_stamping: str = "auto"
+    rpi_hybrid_ts: bool = False
 
 
 @dataclass
@@ -105,6 +107,7 @@ class ClusterTimeConfig:
                 min_delay_req_interval=int(ptp_d.get("min_delay_req_interval", 0)),
                 unicast_req_duration=int(ptp_d.get("unicast_req_duration", 300)),
                 time_stamping=str(ptp_d.get("time_stamping", "auto")),
+                rpi_hybrid_ts=bool(ptp_d.get("rpi_hybrid_ts", False)),
             ),
             failover=FailoverConfig(
                 enabled=bool(failover_d.get("enabled", False)),
@@ -156,6 +159,8 @@ class ClusterTimeConfig:
             cfg.ptp.minor_version = int(v)
         if v := env.get("CT_PTP_TIME_STAMPING"):
             cfg.ptp.time_stamping = v
+        if v := env.get("CT_PTP_RPI_HYBRID_TS"):
+            cfg.ptp.rpi_hybrid_ts = v.lower() in ("1", "true", "yes")
         if v := env.get("CT_FAILOVER_ENABLED"):
             cfg.failover.enabled = v.lower() in ("1", "true", "yes")
         if v := env.get("CT_FAILOVER_TIMEOUT"):

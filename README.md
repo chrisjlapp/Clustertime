@@ -48,6 +48,14 @@ Any config value can also be overridden via environment variables (e.g. `CT_INTE
 
 Equivalent env override: `CT_PTP_TIME_STAMPING=auto|hardware|software`.
 
+For Raspberry Pi relay deployments, optional hybrid behavior is available:
+
+- `ptp.rpi_hybrid_ts: true` forces the **relay upstream** ptp4l instance to
+  software timestamping on Raspberry Pi devices.
+- Downstream instance keeps normal `ptp.time_stamping` behavior.
+
+Equivalent env override: `CT_PTP_RPI_HYBRID_TS=true|false`.
+
 ### PTP minor version compatibility
 
 `ptp.minor_version` controls the PTP minor version used by generated ptp4l configs:
