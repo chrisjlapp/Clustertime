@@ -218,4 +218,5 @@ def _derive_clock_identity_from_master_mac(master_ip: str) -> Optional[str]:
     # IEEE 1588 default clockIdentity derivation from EUI-48 MAC:
     # xx:xx:xx:xx:xx:xx -> xx:xx:xx:ff:fe:xx:xx:xx
     clock_id_octets = mac_octets[:3] + ["ff", "fe"] + mac_octets[3:]
-    return ":".join(clock_id_octets)
+    compact = "".join(clock_id_octets)
+    return f"{compact[:6]}.{compact[6:10]}.{compact[10:]}"

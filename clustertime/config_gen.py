@@ -234,7 +234,31 @@ def _relay_time_stamping_for_iface(cfg: ClusterTimeConfig, iface: str, role: str
 def _clock_identity_line(identity: str | None) -> str:
     if not identity:
         return ""
-    return f"clockIdentity           {identity}\n"
+    normalized = _normalize_clock_identity(identity)
+    return f"clockIdentity           {normalized}\n"
+
+
+def _normalize_clock_identity(identity: str) -> str:
+    """
+    Normalize clock identity into linuxptp textual format.
+
+    linuxptp expects an 8-octet identity as 6-4-6 hex groups:
+    e.g. 001122.3344.556677.
+    """
+    raw = identity.strip()
+    # Accept common forms:
+    # - aa:bb:cc:dd:ee:ff:00:11
+    # - aabbccddeeff0011
+    # - aabbcc.ddee.ff0011
+    compact = raw.replace(":", "").replace(".", "")
+    if len(compact) != 16:
+        return raw
+    try:
+        int(compact, 16)
+    except ValueError:
+        return raw
+    compact = compact.lower()
+    return f"{compact[:6]}.{compact[6:10]}.{compact[10:]}"
 
 
 def _is_raspberry_pi() -> bool:

@@ -51,9 +51,9 @@ ptp:
   # Optional override for relay downstream clockIdentity.
   # Use only when you explicitly want downstream clients to see a fixed
   # identity (for example, matching the upstream master identity):
-  # downstream_clock_identity: aa:bb:cc:dd:ee:ff:00:11
+  # downstream_clock_identity: aabbcc.ddee.ff0011
   # Set to "auto" to derive from master's MAC via ARP/neigh table using
-  # EUI-48 -> EUI-64 expansion (xx:xx:xx:ff:fe:xx:xx:xx).
+  # EUI-48 -> EUI-64 expansion (xxxxxx.fffe.xxxxxx).
   # downstream_clock_identity: auto
   #
   # NOTE: Re-using the same identity on multiple active transmitters in the

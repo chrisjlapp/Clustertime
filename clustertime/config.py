@@ -238,15 +238,19 @@ class ClusterTimeConfig:
             )
         if self.ptp.downstream_clock_identity:
             if self.ptp.downstream_clock_identity.lower() != "auto":
-                parts = self.ptp.downstream_clock_identity.split(":")
-                if len(parts) != 8 or any(len(p) != 2 for p in parts):
+                compact = (
+                    self.ptp.downstream_clock_identity.replace(":", "")
+                    .replace(".", "")
+                    .strip()
+                )
+                if len(compact) != 16:
                     raise ValueError(
                         "ptp.downstream_clock_identity must be 'auto' or 8 octets in hex "
-                        "format (e.g. aa:bb:cc:dd:ee:ff:00:11)."
+                        "format (e.g. aa:bb:cc:dd:ee:ff:00:11 or "
+                        "aabbcc.ddee.ff0011)."
                     )
                 try:
-                    for part in parts:
-                        int(part, 16)
+                    int(compact, 16)
                 except ValueError as exc:
                     raise ValueError(
                         "ptp.downstream_clock_identity contains non-hex octets."

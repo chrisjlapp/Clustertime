@@ -48,14 +48,17 @@ If you need the relay downstream instance to advertise a fixed identity
 
 ```yaml
 ptp:
-  downstream_clock_identity: aa:bb:cc:dd:ee:ff:00:11
+  downstream_clock_identity: aabbcc.ddee.ff0011
 ```
 
 or environment override:
 
 ```bash
-CT_PTP_DOWNSTREAM_CLOCK_IDENTITY=aa:bb:cc:dd:ee:ff:00:11
+CT_PTP_DOWNSTREAM_CLOCK_IDENTITY=aabbcc.ddee.ff0011
 ```
+
+Clustertime also accepts `aa:bb:cc:dd:ee:ff:00:11` and normalizes it for
+linuxptp.
 
 You can also set automatic derivation:
 
@@ -66,7 +69,7 @@ ptp:
 
 In `auto` mode, Clustertime reads the master's MAC from `ip neigh` and derives
 the PTP clock identity using EUI-48 → EUI-64 expansion
-(`xx:xx:xx:ff:fe:xx:xx:xx`). If neighbor/MAC lookup is unavailable at startup,
+(`xxxxxx.fffe.xxxxxx`). If neighbor/MAC lookup is unavailable at startup,
 Clustertime falls back to relay self-identity and logs a warning.
 
 > Caution: advertising the same clockIdentity from multiple active clocks in
