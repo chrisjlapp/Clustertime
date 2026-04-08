@@ -47,6 +47,8 @@ slaveOnly               1
 # Keep relay upstream from winning BMCA if any external master is visible.
 priority1               255
 priority2               255
+# Unicast slave mode: do not use multicast announce/sync service.
+inhibit_multicast_service 1
 tx_timestamp_timeout    10
 logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
