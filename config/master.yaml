@@ -1,0 +1,20 @@
+# Clustertime — Master Node Configuration
+# The master uses the system clock as a free-running PTP source (clockClass 135).
+# Relay nodes connect via PTPv2 unicast.
+
+mode: master
+interface: eth0      # Network interface to serve PTP on
+log_level: INFO
+
+ptp:
+  domain: 0           # PTP domain number (0–127)
+  transport: UDPv4
+  # Timestamping mode: auto|hardware|software
+  # auto = use hardware when available on the interface, else software.
+  time_stamping: auto
+  # PTP minor version: 0 (PTPv2.0, default) or 1 (PTPv2.1)
+  minor_version: 0
+  sync_interval: -3   # log2 seconds — -3 = 8 sync messages/sec
+  announce_interval: 1
+  min_delay_req_interval: 0
+  unicast_req_duration: 300   # seconds before relay must renew unicast grant

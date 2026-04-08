@@ -1,0 +1,71 @@
+# Clustertime — Relay Node Configuration
+#
+# A relay node:
+#   1. Connects to the master via PTPv2 unicast (upstream)
+#   2. Redistributes synchronized time via PTPv2 multicast (downstream)
+#
+# Single-interface mode (default):
+#   Two macvlan sub-interfaces are created automatically:
+#     <interface>.up  — upstream unicast slave
+#     <interface>.down — downstream multicast master
+#
+# Dual-interface mode:
+#   Uncomment upstream_interface / downstream_interface below.
+#   No macvlan sub-interfaces are created.
+
+mode: relay
+interface: enp2s0
+log_level: INFO
+
+# Dual-interface mode (optional — leave commented for single-interface):
+# upstream_interface: eth0
+# downstream_interface: eth1
+
+# IP address (with prefix) to assign to the upstream macvlan sub-interface.
+# Required in single-interface mode.  Must be an unused IP on the same subnet
+# as the master so that ptp4l can send unicast packets to it.
+# Example: upstream_ip: 192.168.1.50/24
+upstream_ip: 192.168.1.50/24
+
+# IP address (with prefix) to assign to the downstream macvlan sub-interface.
+# Required in single-interface mode when ptp.transport is UDPv4 so the relay
+# can send Delay_Resp and other downstream UDPv4 packets.
+# Must be different from upstream_ip.
+# Example: downstream_ip: 192.168.1.51/24
+downstream_ip: 192.168.1.51/24
+
+master:
+  ip: 192.168.1.10    # IP address of the master node
+
+ptp:
+  domain: 0
+  transport: UDPv4
+  # Timestamping mode: auto|hardware|software
+  # auto = use hardware when available on each interface, else software.
+  time_stamping: auto
+  # Raspberry Pi relay hybrid mode:
+  # when true, upstream interface is forced to software timestamping on Pi.
+  rpi_hybrid_ts: false
+  # PTP minor version: 0 (PTPv2.0, default) or 1 (PTPv2.1)
+  minor_version: 0
+  # Optional override for relay downstream clockIdentity.
+  # Use only when you explicitly want downstream clients to see a fixed
+  # identity (for example, matching the upstream master identity):
+  # downstream_clock_identity: aabbcc.ddee.ff0011
+  # Set to "auto" to derive from master's MAC via ARP/neigh table using
+  # EUI-48 -> EUI-64 expansion (xxxxxx.fffe.xxxxxx).
+  downstream_clock_identity: auto
+  #
+  # NOTE: Re-using the same identity on multiple active transmitters in the
+  # same PTP domain can be confusing for BMCA/diagnostics.
+  # downstream_clock_identity:
+  sync_interval: -3
+  announce_interval: 1
+  min_delay_req_interval: 0
+
+# Phase 2 — Master failure detection
+failover:
+  enabled: false                # Set true to enable health monitoring
+  detection_timeout: 10         # Probe interval in seconds
+  promote_to_master: false      # Future: auto-promote on master failure
+  backup_masters: []            # Future: list of backup master IPs
