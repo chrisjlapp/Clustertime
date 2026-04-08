@@ -48,6 +48,10 @@ ptp:
   rpi_hybrid_ts: false
   # PTP minor version: 0 (PTPv2.0, default) or 1 (PTPv2.1)
   minor_version: 0
+  # Relay BMCA priorities (0..255, lower wins). Defaults keep relay from
+  # winning elections unless explicitly desired.
+  relay_priority1: 255
+  relay_priority2: 255
   # Optional override for relay downstream clockIdentity.
   # Use only when you explicitly want downstream clients to see a fixed
   # identity (for example, matching the upstream master identity):

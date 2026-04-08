@@ -12,6 +12,9 @@ ptp:
   # Timestamping mode: auto|hardware|software
   # auto = use hardware when available on the interface, else software.
   time_stamping: auto
+  # Master BMCA priorities (0..255, lower wins)
+  master_priority1: 128
+  master_priority2: 128
   # PTP minor version: 0 (PTPv2.0, default) or 1 (PTPv2.1)
   minor_version: 0
   sync_interval: -3   # log2 seconds — -3 = 8 sync messages/sec

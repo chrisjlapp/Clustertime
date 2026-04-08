@@ -17,7 +17,11 @@ ENV vars (all prefixed CT_):
     CT_PTP_SYNC_INTERVAL   Sync interval as log2 (default: -3)
     CT_PTP_MINOR_VERSION   PTP minor version: 0 (PTPv2.0) or 1 (PTPv2.1) (default: 0)
     CT_PTP_TIME_STAMPING   software | hardware | auto (default: auto)
+    CT_PTP_MASTER_PRIORITY1 Master ptp4l priority1 (default: 128)
+    CT_PTP_MASTER_PRIORITY2 Master ptp4l priority2 (default: 128)
     CT_PTP_RPI_HYBRID_TS   Enable Raspberry Pi relay hybrid mode (upstream software TS)
+    CT_PTP_RELAY_PRIORITY1 Relay ptp4l priority1 (default: 255)
+    CT_PTP_RELAY_PRIORITY2 Relay ptp4l priority2 (default: 255)
     CT_PTP_DOWNSTREAM_CLOCK_IDENTITY
                            Override relay downstream ptp4l clockIdentity
                            (e.g. to match the upstream master identity)
@@ -45,7 +49,11 @@ class PTPConfig:
     min_delay_req_interval: int = 0
     unicast_req_duration: int = 300
     time_stamping: str = "auto"
+    master_priority1: int = 128
+    master_priority2: int = 128
     rpi_hybrid_ts: bool = False
+    relay_priority1: int = 255
+    relay_priority2: int = 255
     downstream_clock_identity: Optional[str] = None
 
 
@@ -111,7 +119,11 @@ class ClusterTimeConfig:
                 min_delay_req_interval=int(ptp_d.get("min_delay_req_interval", 0)),
                 unicast_req_duration=int(ptp_d.get("unicast_req_duration", 300)),
                 time_stamping=str(ptp_d.get("time_stamping", "auto")),
+                master_priority1=int(ptp_d.get("master_priority1", 128)),
+                master_priority2=int(ptp_d.get("master_priority2", 128)),
                 rpi_hybrid_ts=bool(ptp_d.get("rpi_hybrid_ts", False)),
+                relay_priority1=int(ptp_d.get("relay_priority1", 255)),
+                relay_priority2=int(ptp_d.get("relay_priority2", 255)),
                 downstream_clock_identity=ptp_d.get("downstream_clock_identity") or None,
             ),
             failover=FailoverConfig(
@@ -164,8 +176,16 @@ class ClusterTimeConfig:
             cfg.ptp.minor_version = int(v)
         if v := env.get("CT_PTP_TIME_STAMPING"):
             cfg.ptp.time_stamping = v
+        if v := env.get("CT_PTP_MASTER_PRIORITY1"):
+            cfg.ptp.master_priority1 = int(v)
+        if v := env.get("CT_PTP_MASTER_PRIORITY2"):
+            cfg.ptp.master_priority2 = int(v)
         if v := env.get("CT_PTP_RPI_HYBRID_TS"):
             cfg.ptp.rpi_hybrid_ts = v.lower() in ("1", "true", "yes")
+        if v := env.get("CT_PTP_RELAY_PRIORITY1"):
+            cfg.ptp.relay_priority1 = int(v)
+        if v := env.get("CT_PTP_RELAY_PRIORITY2"):
+            cfg.ptp.relay_priority2 = int(v)
         if v := env.get("CT_PTP_DOWNSTREAM_CLOCK_IDENTITY"):
             cfg.ptp.downstream_clock_identity = v
         if v := env.get("CT_FAILOVER_ENABLED"):
@@ -235,6 +255,26 @@ class ClusterTimeConfig:
             raise ValueError(
                 "ptp.minor_version must be 0 (PTPv2.0) or 1 (PTPv2.1) "
                 "(or set CT_PTP_MINOR_VERSION accordingly)."
+            )
+        if not 0 <= self.ptp.master_priority1 <= 255:
+            raise ValueError(
+                "ptp.master_priority1 must be in the range 0..255 "
+                "(or set CT_PTP_MASTER_PRIORITY1 accordingly)."
+            )
+        if not 0 <= self.ptp.master_priority2 <= 255:
+            raise ValueError(
+                "ptp.master_priority2 must be in the range 0..255 "
+                "(or set CT_PTP_MASTER_PRIORITY2 accordingly)."
+            )
+        if not 0 <= self.ptp.relay_priority1 <= 255:
+            raise ValueError(
+                "ptp.relay_priority1 must be in the range 0..255 "
+                "(or set CT_PTP_RELAY_PRIORITY1 accordingly)."
+            )
+        if not 0 <= self.ptp.relay_priority2 <= 255:
+            raise ValueError(
+                "ptp.relay_priority2 must be in the range 0..255 "
+                "(or set CT_PTP_RELAY_PRIORITY2 accordingly)."
             )
         if self.ptp.downstream_clock_identity:
             if self.ptp.downstream_clock_identity.lower() != "auto":
