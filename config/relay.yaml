@@ -43,6 +43,8 @@ ptp:
   # Timestamping mode: auto|hardware|software
   # auto = use hardware when available on each interface, else software.
   time_stamping: auto
+  # PTP minor version: 0 (PTPv2.0, default) or 1 (PTPv2.1)
+  minor_version: 0
   sync_interval: -3
   announce_interval: 1
   min_delay_req_interval: 0
