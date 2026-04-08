@@ -35,7 +35,7 @@ unicast_req_duration    {unicast_req_duration}
 uds_address             /var/run/ptp4l_master
 
 [{iface}]
-serverOnly              1
+masterOnly              1
 # Accept unicast negotiation requests from relay clients.
 unicast_listen          1
 """
