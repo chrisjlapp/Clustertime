@@ -30,6 +30,8 @@ domainNumber            {domain}
 time_stamping           software
 twoStepFlag             1
 summary_interval        0
+# In unicast deployments, send Delay_Req to the current master via unicast.
+hybrid_e2e              1
 # Allow relay nodes to request unicast sync grants
 unicast_req_duration    {unicast_req_duration}
 uds_address             /var/run/ptp4l_master
@@ -59,6 +61,8 @@ domainNumber            {domain}
 time_stamping           software
 twoStepFlag             1
 summary_interval        0
+# In unicast deployments, send Delay_Req to the current master via unicast.
+hybrid_e2e              1
 # Explicitly request unicast service; some ptp4l builds default this to 0.
 unicast_req_duration    {unicast_req_duration}
 uds_address             /var/run/ptp4l_upstream
