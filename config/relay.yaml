@@ -21,6 +21,12 @@ log_level: INFO
 # upstream_interface: eth0
 # downstream_interface: eth1
 
+# IP address (with prefix) to assign to the upstream macvlan sub-interface.
+# Required in single-interface mode.  Must be an unused IP on the same subnet
+# as the master so that ptp4l can send unicast packets to it.
+# Example: upstream_ip: 192.168.1.50/24
+upstream_ip: 192.168.1.50/24
+
 master:
   ip: 192.168.1.10    # IP address of the master node
 
