@@ -112,6 +112,45 @@ If a relay (notably some Raspberry Pi 5 setups) shows repeated
 both `ptp.minor_version: 0` and `ptp.minor_version: 1` across peers to confirm
 which interop combination is stable.
 
+### Relay priority configuration
+
+Relay nodes can set BMCA priorities for both upstream and downstream ptp4l
+instances:
+
+```yaml
+ptp:
+  relay_priority1: 255
+  relay_priority2: 255
+```
+
+Equivalent env overrides:
+
+```bash
+CT_PTP_RELAY_PRIORITY1=255
+CT_PTP_RELAY_PRIORITY2=255
+```
+
+Valid range is `0..255` (lower values have higher priority in BMCA).
+
+### Master priority configuration
+
+Master nodes can also set BMCA priorities for their ptp4l instance:
+
+```yaml
+ptp:
+  master_priority1: 128
+  master_priority2: 128
+```
+
+Equivalent env overrides:
+
+```bash
+CT_PTP_MASTER_PRIORITY1=128
+CT_PTP_MASTER_PRIORITY2=128
+```
+
+Valid range is `0..255` (lower values have higher priority in BMCA).
+
 ## Running
 
 ### Master node

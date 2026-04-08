@@ -23,6 +23,8 @@ _MASTER_CONF = """\
 [global]
 # Use system clock as free-running PTP reference (clockClass 135 = software-only)
 network_transport       {transport}
+priority1               {master_priority1}
+priority2               {master_priority2}
 clockClass              135
 clockAccuracy           0xFE
 offsetScaledLogVariance 0xFFFF
@@ -55,8 +57,8 @@ _RELAY_UPSTREAM_CONF = """\
 network_transport       {transport}
 clientOnly              1
 # Keep relay upstream from winning BMCA if any external master is visible.
-priority1               255
-priority2               255
+priority1               {relay_priority1}
+priority2               {relay_priority2}
 # Unicast slave mode: do not use multicast announce/sync service.
 inhibit_multicast_service 1
 tx_timestamp_timeout    10
@@ -91,6 +93,8 @@ _RELAY_DOWNSTREAM_CONF = """\
 [global]
 # free_running=1: serve system clock (already synced by upstream ptp4l)
 network_transport       {transport}
+priority1               {relay_priority1}
+priority2               {relay_priority2}
 clockClass              135
 clockAccuracy           0xFE
 offsetScaledLogVariance 0xFFFF
@@ -130,6 +134,8 @@ def generate_configs(
         content = _MASTER_CONF.format(
             iface=cfg.interface,
             transport=p.transport,
+            master_priority1=p.master_priority1,
+            master_priority2=p.master_priority2,
             domain=p.domain,
             sync_interval=p.sync_interval,
             minor_version=p.minor_version,
@@ -155,6 +161,8 @@ def generate_configs(
         up_content = _RELAY_UPSTREAM_CONF.format(
             iface=up_iface,
             transport=p.transport,
+            relay_priority1=p.relay_priority1,
+            relay_priority2=p.relay_priority2,
             domain=p.domain,
             sync_interval=p.sync_interval,
             minor_version=p.minor_version,
@@ -171,6 +179,8 @@ def generate_configs(
         down_content = _RELAY_DOWNSTREAM_CONF.format(
             iface=down_iface,
             transport=p.transport,
+            relay_priority1=p.relay_priority1,
+            relay_priority2=p.relay_priority2,
             domain=p.domain,
             sync_interval=p.sync_interval,
             minor_version=p.minor_version,
