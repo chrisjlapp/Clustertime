@@ -1,3 +1,7 @@
+
+<img width="2048" height="2048" alt="Gemini_Generated_Image_lffdgdlffdgdlffd" src="https://github.com/user-attachments/assets/845fae83-12e8-4057-bdeb-95772238d79d" />
+
+
 # Clustertime
 
 PTP Unicast-to-Multicast Relay Appliance. Clustertime bridges a PTPv2 unicast master to a multicast downstream network, enabling accurate time synchronization across cluster nodes.
