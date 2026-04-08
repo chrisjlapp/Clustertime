@@ -59,6 +59,8 @@ domainNumber            {domain}
 time_stamping           software
 twoStepFlag             1
 summary_interval        0
+# Explicitly request unicast service; some ptp4l builds default this to 0.
+unicast_req_duration    {unicast_req_duration}
 uds_address             /var/run/ptp4l_upstream
 
 [{iface}]
@@ -91,7 +93,7 @@ summary_interval        0
 uds_address             /var/run/ptp4l_downstream
 
 [{iface}]
-masterOnly              1
+serverOnly              1
 """
 
 
@@ -141,6 +143,7 @@ def generate_configs(
             sync_interval=p.sync_interval,
             announce_interval=p.announce_interval,
             min_delay_req=p.min_delay_req_interval,
+            unicast_req_duration=p.unicast_req_duration,
             master_ip=cfg.master.ip,
         )
         up_path = os.path.join(conf_dir, "ptp4l_upstream.conf")
