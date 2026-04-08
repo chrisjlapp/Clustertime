@@ -27,6 +27,13 @@ log_level: INFO
 # Example: upstream_ip: 192.168.1.50/24
 upstream_ip: 192.168.1.50/24
 
+# IP address (with prefix) to assign to the downstream macvlan sub-interface.
+# Required in single-interface mode when ptp.transport is UDPv4 so the relay
+# can send Delay_Resp and other downstream UDPv4 packets.
+# Must be different from upstream_ip.
+# Example: downstream_ip: 192.168.1.51/24
+downstream_ip: 192.168.1.51/24
+
 master:
   ip: 192.168.1.10    # IP address of the master node
 
