@@ -104,7 +104,7 @@ ptp_minor_version       {minor_version}
 time_stamping           {time_stamping}
 twoStepFlag             1
 summary_interval        0
-uds_address             /var/run/ptp4l_downstream
+{clock_identity_line}uds_address             /var/run/ptp4l_downstream
 
 [{iface}]
 serverOnly              1
@@ -177,6 +177,7 @@ def generate_configs(
             announce_interval=p.announce_interval,
             min_delay_req=p.min_delay_req_interval,
             time_stamping=_relay_time_stamping_for_iface(cfg, down_iface, role="downstream"),
+            clock_identity_line=_clock_identity_line(p.downstream_clock_identity),
         )
         down_path = os.path.join(conf_dir, "ptp4l_downstream.conf")
         _write(down_path, down_content)
@@ -228,6 +229,12 @@ def _relay_time_stamping_for_iface(cfg: ClusterTimeConfig, iface: str, role: str
         )
         return "software"
     return _resolve_time_stamping(cfg.ptp.time_stamping, iface)
+
+
+def _clock_identity_line(identity: str | None) -> str:
+    if not identity:
+        return ""
+    return f"clockIdentity           {identity}\n"
 
 
 def _is_raspberry_pi() -> bool:
