@@ -9,6 +9,8 @@ ENV vars (all prefixed CT_):
     CT_MASTER_IP           Master node IP (required for relay)
     CT_UPSTREAM_IP         IP/prefix for upstream macvlan, e.g. 192.168.1.50/24
                            (required in single-interface relay mode)
+    CT_DOWNSTREAM_IP       IP/prefix for downstream macvlan, e.g. 192.168.1.51/24
+                           (required for UDPv4 downstream in single-interface mode)
     CT_LOG_LEVEL           Log level (default: INFO)
     CT_PTP_DOMAIN          PTP domain number (default: 0)
     CT_PTP_TRANSPORT       Transport (default: UDPv4)
@@ -60,6 +62,9 @@ class ClusterTimeConfig:
     # single-interface mode, e.g. "192.168.1.50/24".  Required so that
     # ptp4l can send unicast SIGNALING packets to the master.
     upstream_ip: Optional[str] = None
+    # Optional IP address (with prefix) assigned to the downstream macvlan in
+    # single-interface mode when using UDPv4 downstream PTP traffic.
+    downstream_ip: Optional[str] = None
     master: MasterConfig = field(default_factory=MasterConfig)
     ptp: PTPConfig = field(default_factory=PTPConfig)
     failover: FailoverConfig = field(default_factory=FailoverConfig)
@@ -85,6 +90,7 @@ class ClusterTimeConfig:
             upstream_interface=data.get("upstream_interface"),
             downstream_interface=data.get("downstream_interface"),
             upstream_ip=data.get("upstream_ip") or None,
+            downstream_ip=data.get("downstream_ip") or None,
             master=MasterConfig(ip=master_d.get("ip")),
             ptp=PTPConfig(
                 domain=int(ptp_d.get("domain", 0)),
@@ -128,6 +134,8 @@ class ClusterTimeConfig:
             cfg.downstream_interface = v
         if v := env.get("CT_UPSTREAM_IP"):
             cfg.upstream_ip = v
+        if v := env.get("CT_DOWNSTREAM_IP"):
+            cfg.downstream_ip = v
         if v := env.get("CT_MASTER_IP"):
             cfg.master.ip = v
         if v := env.get("CT_LOG_LEVEL"):
@@ -162,4 +170,27 @@ class ClusterTimeConfig:
                 "(e.g. upstream_ip: 192.168.1.50/24 in config, or CT_UPSTREAM_IP env var). "
                 "This IP is assigned to the upstream macvlan so ptp4l can send "
                 "unicast packets to the master."
+            )
+        if (
+            self.mode == "relay"
+            and not self.dual_interface
+            and self.ptp.transport.upper() == "UDPV4"
+            and not self.downstream_ip
+        ):
+            raise ValueError(
+                "Single-interface relay mode with ptp.transport=UDPv4 requires "
+                "downstream_ip to be set (e.g. downstream_ip: 192.168.1.51/24 "
+                "or CT_DOWNSTREAM_IP). This IP is assigned to the downstream "
+                "macvlan so ptp4l can send Delay_Resp and other UDPv4 messages."
+            )
+        if (
+            self.mode == "relay"
+            and not self.dual_interface
+            and self.upstream_ip
+            and self.downstream_ip
+            and self.upstream_ip == self.downstream_ip
+        ):
+            raise ValueError(
+                "upstream_ip and downstream_ip must be different in single-interface "
+                "relay mode. Each macvlan needs its own unique address."
             )
