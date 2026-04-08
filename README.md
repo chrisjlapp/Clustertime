@@ -39,6 +39,39 @@ master:
 
 Any config value can also be overridden via environment variables (e.g. `CT_INTERFACE`, `CT_MODE`, `CT_MASTER_IP`).
 
+### Relay downstream identity override
+
+By default, relay downstream announces use the relay's own clock identity.
+
+If you need the relay downstream instance to advertise a fixed identity
+(for example, matching the upstream master), set:
+
+```yaml
+ptp:
+  downstream_clock_identity: aa:bb:cc:dd:ee:ff:00:11
+```
+
+or environment override:
+
+```bash
+CT_PTP_DOWNSTREAM_CLOCK_IDENTITY=aa:bb:cc:dd:ee:ff:00:11
+```
+
+You can also set automatic derivation:
+
+```yaml
+ptp:
+  downstream_clock_identity: auto
+```
+
+In `auto` mode, Clustertime reads the master's MAC from `ip neigh` and derives
+the PTP clock identity using EUI-48 → EUI-64 expansion
+(`xx:xx:xx:ff:fe:xx:xx:xx`). If neighbor/MAC lookup is unavailable at startup,
+Clustertime falls back to relay self-identity and logs a warning.
+
+> Caution: advertising the same clockIdentity from multiple active clocks in
+> one PTP domain can make BMCA/debugging ambiguous.
+
 ### Timestamping mode
 
 `ptp.time_stamping` supports:

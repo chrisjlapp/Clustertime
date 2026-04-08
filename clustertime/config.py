@@ -18,6 +18,9 @@ ENV vars (all prefixed CT_):
     CT_PTP_MINOR_VERSION   PTP minor version: 0 (PTPv2.0) or 1 (PTPv2.1) (default: 0)
     CT_PTP_TIME_STAMPING   software | hardware | auto (default: auto)
     CT_PTP_RPI_HYBRID_TS   Enable Raspberry Pi relay hybrid mode (upstream software TS)
+    CT_PTP_DOWNSTREAM_CLOCK_IDENTITY
+                           Override relay downstream ptp4l clockIdentity
+                           (e.g. to match the upstream master identity)
     CT_FAILOVER_ENABLED    Enable master health monitoring (default: false)
     CT_FAILOVER_TIMEOUT    Seconds before master declared failed (default: 10)
     CT_FAILOVER_PROMOTE    Promote self to master on failure (default: false)
@@ -43,6 +46,7 @@ class PTPConfig:
     unicast_req_duration: int = 300
     time_stamping: str = "auto"
     rpi_hybrid_ts: bool = False
+    downstream_clock_identity: Optional[str] = None
 
 
 @dataclass
@@ -108,6 +112,7 @@ class ClusterTimeConfig:
                 unicast_req_duration=int(ptp_d.get("unicast_req_duration", 300)),
                 time_stamping=str(ptp_d.get("time_stamping", "auto")),
                 rpi_hybrid_ts=bool(ptp_d.get("rpi_hybrid_ts", False)),
+                downstream_clock_identity=ptp_d.get("downstream_clock_identity") or None,
             ),
             failover=FailoverConfig(
                 enabled=bool(failover_d.get("enabled", False)),
@@ -161,6 +166,8 @@ class ClusterTimeConfig:
             cfg.ptp.time_stamping = v
         if v := env.get("CT_PTP_RPI_HYBRID_TS"):
             cfg.ptp.rpi_hybrid_ts = v.lower() in ("1", "true", "yes")
+        if v := env.get("CT_PTP_DOWNSTREAM_CLOCK_IDENTITY"):
+            cfg.ptp.downstream_clock_identity = v
         if v := env.get("CT_FAILOVER_ENABLED"):
             cfg.failover.enabled = v.lower() in ("1", "true", "yes")
         if v := env.get("CT_FAILOVER_TIMEOUT"):
@@ -229,3 +236,18 @@ class ClusterTimeConfig:
                 "ptp.minor_version must be 0 (PTPv2.0) or 1 (PTPv2.1) "
                 "(or set CT_PTP_MINOR_VERSION accordingly)."
             )
+        if self.ptp.downstream_clock_identity:
+            if self.ptp.downstream_clock_identity.lower() != "auto":
+                parts = self.ptp.downstream_clock_identity.split(":")
+                if len(parts) != 8 or any(len(p) != 2 for p in parts):
+                    raise ValueError(
+                        "ptp.downstream_clock_identity must be 'auto' or 8 octets in hex "
+                        "format (e.g. aa:bb:cc:dd:ee:ff:00:11)."
+                    )
+                try:
+                    for part in parts:
+                        int(part, 16)
+                except ValueError as exc:
+                    raise ValueError(
+                        "ptp.downstream_clock_identity contains non-hex octets."
+                    ) from exc

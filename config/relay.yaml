@@ -48,6 +48,17 @@ ptp:
   rpi_hybrid_ts: false
   # PTP minor version: 0 (PTPv2.0, default) or 1 (PTPv2.1)
   minor_version: 0
+  # Optional override for relay downstream clockIdentity.
+  # Use only when you explicitly want downstream clients to see a fixed
+  # identity (for example, matching the upstream master identity):
+  # downstream_clock_identity: aa:bb:cc:dd:ee:ff:00:11
+  # Set to "auto" to derive from master's MAC via ARP/neigh table using
+  # EUI-48 -> EUI-64 expansion (xx:xx:xx:ff:fe:xx:xx:xx).
+  # downstream_clock_identity: auto
+  #
+  # NOTE: Re-using the same identity on multiple active transmitters in the
+  # same PTP domain can be confusing for BMCA/diagnostics.
+  # downstream_clock_identity:
   sync_interval: -3
   announce_interval: 1
   min_delay_req_interval: 0
