@@ -1,0 +1,39 @@
+# Clustertime — Relay Node Configuration
+#
+# A relay node:
+#   1. Connects to the master via PTPv2 unicast (upstream)
+#   2. Redistributes synchronized time via PTPv2 multicast (downstream)
+#
+# Single-interface mode (default):
+#   Two macvlan sub-interfaces are created automatically:
+#     <interface>.up  — upstream unicast slave
+#     <interface>.down — downstream multicast master
+#
+# Dual-interface mode:
+#   Uncomment upstream_interface / downstream_interface below.
+#   No macvlan sub-interfaces are created.
+
+mode: relay
+interface: eth0
+log_level: INFO
+
+# Dual-interface mode (optional — leave commented for single-interface):
+# upstream_interface: eth0
+# downstream_interface: eth1
+
+master:
+  ip: 192.168.1.10    # IP address of the master node
+
+ptp:
+  domain: 0
+  transport: UDPv4
+  sync_interval: -3
+  announce_interval: 1
+  min_delay_req_interval: 0
+
+# Phase 2 — Master failure detection
+failover:
+  enabled: false                # Set true to enable health monitoring
+  detection_timeout: 10         # Probe interval in seconds
+  promote_to_master: false      # Future: auto-promote on master failure
+  backup_masters: []            # Future: list of backup master IPs

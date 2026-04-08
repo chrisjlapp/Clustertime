@@ -1,0 +1,47 @@
+version: "3.8"
+
+# Usage:
+#   Master:  docker compose --profile master up
+#   Relay:   docker compose --profile relay  up
+#
+# Both require host networking and privileged mode for PTP and macvlan support.
+
+x-clustertime-base: &clustertime-base
+  build: .
+  network_mode: host
+  privileged: true
+  restart: unless-stopped
+  volumes:
+    - /dev:/dev   # access to /dev/ptp* for hardware timestamping
+
+services:
+
+  # ------------------------------------------------------------------
+  # Master node — serves unicast PTPv2 from system clock
+  # ------------------------------------------------------------------
+  ptp-master:
+    <<: *clustertime-base
+    container_name: clustertime-master
+    profiles: ["master"]
+    volumes:
+      - ./config/master.yaml:/etc/clustertime/config.yaml:ro
+      - /dev:/dev
+    environment:
+      # Override any config value via environment:
+      # CT_INTERFACE: eth0
+      # CT_PTP_DOMAIN: "0"
+      CT_MODE: master
+
+  # ------------------------------------------------------------------
+  # Relay node — unicast slave upstream, multicast master downstream
+  # ------------------------------------------------------------------
+  ptp-relay:
+    <<: *clustertime-base
+    container_name: clustertime-relay
+    profiles: ["relay"]
+    volumes:
+      - ./config/relay.yaml:/etc/clustertime/config.yaml:ro
+      - /dev:/dev
+    environment:
+      CT_MODE: relay
+      # CT_MASTER_IP: 192.168.1.10   # can also be set in relay.yaml
