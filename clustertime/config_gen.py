@@ -29,7 +29,9 @@ clockClass              135
 clockAccuracy           0xFE
 offsetScaledLogVariance 0xFFFF
 free_running            1
-tx_timestamp_timeout    10
+tx_timestamp_timeout    {tx_timestamp_timeout}
+# Controls IPv4 TTL / IPv6 hop-limit for outgoing UDP PTP packets.
+udp_ttl                 {udp_ttl}
 logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
 logAnnounceInterval     {announce_interval}
@@ -61,7 +63,9 @@ priority1               {relay_priority1}
 priority2               {relay_priority2}
 # Unicast slave mode: do not use multicast announce/sync service.
 inhibit_multicast_service 1
-tx_timestamp_timeout    10
+tx_timestamp_timeout    {tx_timestamp_timeout}
+# Controls IPv4 TTL / IPv6 hop-limit for outgoing UDP PTP packets.
+udp_ttl                 {udp_ttl}
 logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
 logAnnounceInterval     {announce_interval}
@@ -99,7 +103,9 @@ clockClass              135
 clockAccuracy           0xFE
 offsetScaledLogVariance 0xFFFF
 free_running            1
-tx_timestamp_timeout    10
+tx_timestamp_timeout    {tx_timestamp_timeout}
+# Controls IPv4 TTL / IPv6 hop-limit for outgoing UDP PTP packets.
+udp_ttl                 {udp_ttl}
 logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
 logAnnounceInterval     {announce_interval}
@@ -143,6 +149,8 @@ def generate_configs(
             min_delay_req=p.min_delay_req_interval,
             unicast_req_duration=p.unicast_req_duration,
             time_stamping=_resolve_time_stamping(p.time_stamping, cfg.interface),
+            tx_timestamp_timeout=p.tx_timestamp_timeout,
+            udp_ttl=p.multicast_ttl,
         )
         path = os.path.join(conf_dir, "ptp4l_master.conf")
         _write(path, content)
@@ -171,6 +179,8 @@ def generate_configs(
             unicast_req_duration=p.unicast_req_duration,
             master_ip=cfg.master.ip,
             time_stamping=_relay_time_stamping_for_iface(cfg, up_iface, role="upstream"),
+            tx_timestamp_timeout=p.tx_timestamp_timeout,
+            udp_ttl=p.unicast_ttl,
         )
         up_path = os.path.join(conf_dir, "ptp4l_upstream.conf")
         _write(up_path, up_content)
@@ -187,6 +197,8 @@ def generate_configs(
             announce_interval=p.announce_interval,
             min_delay_req=p.min_delay_req_interval,
             time_stamping=_relay_time_stamping_for_iface(cfg, down_iface, role="downstream"),
+            tx_timestamp_timeout=p.tx_timestamp_timeout,
+            udp_ttl=p.multicast_ttl,
             clock_identity_line=_clock_identity_line(p.downstream_clock_identity),
         )
         down_path = os.path.join(conf_dir, "ptp4l_downstream.conf")

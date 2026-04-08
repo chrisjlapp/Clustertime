@@ -221,10 +221,30 @@ Typical causes and checks:
 
    Confirm hardware or software RX timestamping is reported.
 
-2. Compare working vs failing relay effective timestamp mode:
+2. Compare working vs failing relay effective timestamp mode, tx timeout, and TTL settings:
 
-   - Config file: `ptp.time_stamping`
-   - Env override: `CT_PTP_TIME_STAMPING`
+   - Config file: `ptp.time_stamping`, `ptp.tx_timestamp_timeout`, `ptp.multicast_ttl`, `ptp.unicast_ttl`
+   - Env override: `CT_PTP_TIME_STAMPING`, `CT_PTP_TX_TS_TIMEOUT`, `CT_PTP_MULTICAST_TTL`, `CT_PTP_UNICAST_TTL`
+
+   Note: linuxptp exposes `udp_ttl` for UDP transports; Clustertime maps
+   `ptp.multicast_ttl`/`ptp.unicast_ttl` to the generated role configs so you can
+   tune relay upstream/downstream behavior independently.
+
+   If logs include `timed out while polling for tx timestamp`, increase timeout
+   temporarily (for example to 30 seconds) to determine whether this is
+   a latency/driver issue instead of total timestamp failure:
+
+   ```yaml
+   ptp:
+     time_stamping: software
+     tx_timestamp_timeout: 30
+   ```
+
+   Environment equivalent:
+
+   ```bash
+   export CT_PTP_TX_TS_TIMEOUT=30
+   ```
 
    For isolation, force software mode first:
 

@@ -17,6 +17,9 @@ ENV vars (all prefixed CT_):
     CT_PTP_SYNC_INTERVAL   Sync interval as log2 (default: -3)
     CT_PTP_MINOR_VERSION   PTP minor version: 0 (PTPv2.0) or 1 (PTPv2.1) (default: 0)
     CT_PTP_TIME_STAMPING   software | hardware | auto (default: auto)
+    CT_PTP_TX_TS_TIMEOUT   ptp4l tx_timestamp_timeout seconds (default: 10)
+    CT_PTP_MULTICAST_TTL   ptp4l UDP TTL/hop-limit for multicast packets (default: 1)
+    CT_PTP_UNICAST_TTL     Clustertime unicast UDP TTL/hop-limit hint (default: 1)
     CT_PTP_MASTER_PRIORITY1 Master ptp4l priority1 (default: 128)
     CT_PTP_MASTER_PRIORITY2 Master ptp4l priority2 (default: 128)
     CT_PTP_RPI_HYBRID_TS   Enable Raspberry Pi relay hybrid mode (upstream software TS)
@@ -49,6 +52,9 @@ class PTPConfig:
     min_delay_req_interval: int = 0
     unicast_req_duration: int = 300
     time_stamping: str = "auto"
+    tx_timestamp_timeout: int = 10
+    multicast_ttl: int = 1
+    unicast_ttl: int = 1
     master_priority1: int = 128
     master_priority2: int = 128
     rpi_hybrid_ts: bool = False
@@ -119,6 +125,9 @@ class ClusterTimeConfig:
                 min_delay_req_interval=int(ptp_d.get("min_delay_req_interval", 0)),
                 unicast_req_duration=int(ptp_d.get("unicast_req_duration", 300)),
                 time_stamping=str(ptp_d.get("time_stamping", "auto")),
+                tx_timestamp_timeout=int(ptp_d.get("tx_timestamp_timeout", 10)),
+                multicast_ttl=int(ptp_d.get("multicast_ttl", 1)),
+                unicast_ttl=int(ptp_d.get("unicast_ttl", 1)),
                 master_priority1=int(ptp_d.get("master_priority1", 128)),
                 master_priority2=int(ptp_d.get("master_priority2", 128)),
                 rpi_hybrid_ts=bool(ptp_d.get("rpi_hybrid_ts", False)),
@@ -176,6 +185,12 @@ class ClusterTimeConfig:
             cfg.ptp.minor_version = int(v)
         if v := env.get("CT_PTP_TIME_STAMPING"):
             cfg.ptp.time_stamping = v
+        if v := env.get("CT_PTP_TX_TS_TIMEOUT"):
+            cfg.ptp.tx_timestamp_timeout = int(v)
+        if v := env.get("CT_PTP_MULTICAST_TTL"):
+            cfg.ptp.multicast_ttl = int(v)
+        if v := env.get("CT_PTP_UNICAST_TTL"):
+            cfg.ptp.unicast_ttl = int(v)
         if v := env.get("CT_PTP_MASTER_PRIORITY1"):
             cfg.ptp.master_priority1 = int(v)
         if v := env.get("CT_PTP_MASTER_PRIORITY2"):
@@ -250,6 +265,21 @@ class ClusterTimeConfig:
                 "(including Raspberry Pi macb). Use dual-interface relay mode "
                 "with physical NICs for hardware timestamping, or switch to "
                 "ptp.time_stamping=software."
+            )
+        if self.ptp.tx_timestamp_timeout <= 0:
+            raise ValueError(
+                "ptp.tx_timestamp_timeout must be > 0 "
+                "(or set CT_PTP_TX_TS_TIMEOUT accordingly)."
+            )
+        if not 1 <= self.ptp.multicast_ttl <= 255:
+            raise ValueError(
+                "ptp.multicast_ttl must be in the range 1..255 "
+                "(or set CT_PTP_MULTICAST_TTL accordingly)."
+            )
+        if not 1 <= self.ptp.unicast_ttl <= 255:
+            raise ValueError(
+                "ptp.unicast_ttl must be in the range 1..255 "
+                "(or set CT_PTP_UNICAST_TTL accordingly)."
             )
         if self.ptp.minor_version not in (0, 1):
             raise ValueError(
