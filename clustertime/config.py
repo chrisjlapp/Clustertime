@@ -15,6 +15,7 @@ ENV vars (all prefixed CT_):
     CT_PTP_DOMAIN          PTP domain number (default: 0)
     CT_PTP_TRANSPORT       Transport (default: UDPv4)
     CT_PTP_SYNC_INTERVAL   Sync interval as log2 (default: -3)
+    CT_PTP_TIME_STAMPING   software | hardware | auto (default: auto)
     CT_FAILOVER_ENABLED    Enable master health monitoring (default: false)
     CT_FAILOVER_TIMEOUT    Seconds before master declared failed (default: 10)
     CT_FAILOVER_PROMOTE    Promote self to master on failure (default: false)
@@ -37,6 +38,7 @@ class PTPConfig:
     announce_interval: int = 1
     min_delay_req_interval: int = 0
     unicast_req_duration: int = 300
+    time_stamping: str = "auto"
 
 
 @dataclass
@@ -99,6 +101,7 @@ class ClusterTimeConfig:
                 announce_interval=int(ptp_d.get("announce_interval", 1)),
                 min_delay_req_interval=int(ptp_d.get("min_delay_req_interval", 0)),
                 unicast_req_duration=int(ptp_d.get("unicast_req_duration", 300)),
+                time_stamping=str(ptp_d.get("time_stamping", "auto")),
             ),
             failover=FailoverConfig(
                 enabled=bool(failover_d.get("enabled", False)),
@@ -146,6 +149,8 @@ class ClusterTimeConfig:
             cfg.ptp.transport = v
         if v := env.get("CT_PTP_SYNC_INTERVAL"):
             cfg.ptp.sync_interval = int(v)
+        if v := env.get("CT_PTP_TIME_STAMPING"):
+            cfg.ptp.time_stamping = v
         if v := env.get("CT_FAILOVER_ENABLED"):
             cfg.failover.enabled = v.lower() in ("1", "true", "yes")
         if v := env.get("CT_FAILOVER_TIMEOUT"):
@@ -193,4 +198,10 @@ class ClusterTimeConfig:
             raise ValueError(
                 "upstream_ip and downstream_ip must be different in single-interface "
                 "relay mode. Each macvlan needs its own unique address."
+            )
+        ts_mode = self.ptp.time_stamping.lower()
+        if ts_mode not in ("software", "hardware", "auto"):
+            raise ValueError(
+                "ptp.time_stamping must be one of: software, hardware, auto "
+                "(or set CT_PTP_TIME_STAMPING accordingly)."
             )

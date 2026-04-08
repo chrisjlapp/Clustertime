@@ -9,6 +9,9 @@ log_level: INFO
 ptp:
   domain: 0           # PTP domain number (0–127)
   transport: UDPv4
+  # Timestamping mode: auto|hardware|software
+  # auto = use hardware when available on the interface, else software.
+  time_stamping: auto
   sync_interval: -3   # log2 seconds — -3 = 8 sync messages/sec
   announce_interval: 1
   min_delay_req_interval: 0
