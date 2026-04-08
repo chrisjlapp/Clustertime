@@ -44,6 +44,9 @@ _RELAY_UPSTREAM_CONF = """\
 [global]
 network_transport       {transport}
 slaveOnly               1
+# Keep relay upstream from winning BMCA if any external master is visible.
+priority1               255
+priority2               255
 tx_timestamp_timeout    10
 logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
