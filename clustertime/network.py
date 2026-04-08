@@ -60,6 +60,9 @@ def setup_relay_interfaces(cfg: ClusterTimeConfig) -> Tuple[str, str]:
 
     _run(["ip", "link", "add", "link", base, "name", down, "type", "macvlan", "mode", "bridge"])
     _run(["ip", "link", "set", down, "up"])
+    if cfg.downstream_ip:
+        _run(["ip", "addr", "add", cfg.downstream_ip, "dev", down])
+        log.info("Assigned %s to downstream interface %s", cfg.downstream_ip, down)
 
     log.info("macvlan interfaces ready: %s, %s", up, down)
     return up, down
