@@ -52,6 +52,11 @@ def setup_relay_interfaces(cfg: ClusterTimeConfig) -> Tuple[str, str]:
 
     _run(["ip", "link", "add", "link", base, "name", up, "type", "macvlan", "mode", "bridge"])
     _run(["ip", "link", "set", up, "up"])
+    # Assign IP so ptp4l can send unicast SIGNALING to the master.
+    # Without an IP on the macvlan, outgoing unicast UDP has no source
+    # address and the master never receives the announce/sync requests.
+    _run(["ip", "addr", "add", cfg.upstream_ip, "dev", up])
+    log.info("Assigned %s to upstream interface %s", cfg.upstream_ip, up)
 
     _run(["ip", "link", "add", "link", base, "name", down, "type", "macvlan", "mode", "bridge"])
     _run(["ip", "link", "set", down, "up"])
