@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 import os
+import pathlib
+import shutil
+import subprocess
 from typing import Dict
 
 from .config import ClusterTimeConfig
 
 _CONF_DIR = "/var/run/clustertime"
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Templates
@@ -27,9 +32,11 @@ logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
 logAnnounceInterval     {announce_interval}
 domainNumber            {domain}
-time_stamping           software
+time_stamping           {time_stamping}
 twoStepFlag             1
 summary_interval        0
+# In unicast deployments, send Delay_Req to the current master via unicast.
+hybrid_e2e              1
 # Allow relay nodes to request unicast sync grants
 unicast_req_duration    {unicast_req_duration}
 uds_address             /var/run/ptp4l_master
@@ -56,9 +63,11 @@ logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
 logAnnounceInterval     {announce_interval}
 domainNumber            {domain}
-time_stamping           software
+time_stamping           {time_stamping}
 twoStepFlag             1
 summary_interval        0
+# In unicast deployments, send Delay_Req to the current master via unicast.
+hybrid_e2e              1
 # Explicitly request unicast service; some ptp4l builds default this to 0.
 unicast_req_duration    {unicast_req_duration}
 uds_address             /var/run/ptp4l_upstream
@@ -89,7 +98,7 @@ logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
 logAnnounceInterval     {announce_interval}
 domainNumber            {domain}
-time_stamping           software
+time_stamping           {time_stamping}
 twoStepFlag             1
 summary_interval        0
 uds_address             /var/run/ptp4l_downstream
@@ -123,6 +132,7 @@ def generate_configs(
             announce_interval=p.announce_interval,
             min_delay_req=p.min_delay_req_interval,
             unicast_req_duration=p.unicast_req_duration,
+            time_stamping=_resolve_time_stamping(p.time_stamping, cfg.interface),
         )
         path = os.path.join(conf_dir, "ptp4l_master.conf")
         _write(path, content)
@@ -147,6 +157,7 @@ def generate_configs(
             min_delay_req=p.min_delay_req_interval,
             unicast_req_duration=p.unicast_req_duration,
             master_ip=cfg.master.ip,
+            time_stamping=_resolve_time_stamping(p.time_stamping, up_iface),
         )
         up_path = os.path.join(conf_dir, "ptp4l_upstream.conf")
         _write(up_path, up_content)
@@ -159,6 +170,7 @@ def generate_configs(
             sync_interval=p.sync_interval,
             announce_interval=p.announce_interval,
             min_delay_req=p.min_delay_req_interval,
+            time_stamping=_resolve_time_stamping(p.time_stamping, down_iface),
         )
         down_path = os.path.join(conf_dir, "ptp4l_downstream.conf")
         _write(down_path, down_content)
@@ -170,3 +182,59 @@ def generate_configs(
 def _write(path: str, content: str) -> None:
     with open(path, "w") as fh:
         fh.write(content)
+
+
+def _resolve_time_stamping(mode: str, iface: str) -> str:
+    """
+    Resolve effective ptp4l time_stamping setting for an interface.
+
+    mode:
+      - software: always software
+      - hardware: always hardware
+      - auto: use hardware when capability is detected, else software
+    """
+    normalized = mode.strip().lower()
+    if normalized in ("software", "hardware"):
+        return normalized
+    if normalized != "auto":
+        # config.validate should prevent this; keep a safe fallback.
+        log.warning("Unknown time_stamping mode %r, defaulting to software", mode)
+        return "software"
+    if _supports_hardware_timestamping(iface):
+        log.info("Interface %s supports hardware timestamping; using hardware", iface)
+        return "hardware"
+    log.info("Interface %s does not expose hardware timestamping; using software", iface)
+    return "software"
+
+
+def _supports_hardware_timestamping(iface: str) -> bool:
+    """
+    Best-effort interface capability probe.
+
+    Prefers ethtool -T output, with a sysfs fallback for NIC-backed PTP clocks.
+    """
+    ethtool = shutil.which("ethtool")
+    if ethtool:
+        try:
+            result = subprocess.run(
+                [ethtool, "-T", iface],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0:
+                out = result.stdout.lower()
+                hw_tokens = ("hardware-transmit", "hardware-receive", "hardware-raw-clock")
+                if any(tok in out for tok in hw_tokens):
+                    return True
+        except Exception as exc:  # pragma: no cover - defensive probe path
+            log.debug("ethtool probe failed for %s: %s", iface, exc)
+
+    # Fallback: NIC has an associated PHC device in sysfs.
+    ptp_link = pathlib.Path("/sys/class/net") / iface / "device" / "ptp"
+    try:
+        if ptp_link.exists():
+            return True
+    except Exception:  # pragma: no cover - defensive probe path
+        return False
+    return False

@@ -39,6 +39,15 @@ master:
 
 Any config value can also be overridden via environment variables (e.g. `CT_INTERFACE`, `CT_MODE`, `CT_MASTER_IP`).
 
+### Timestamping mode
+
+`ptp.time_stamping` supports:
+- `auto` (default): use hardware timestamping when the interface reports support, otherwise fall back to software
+- `hardware`: force hardware timestamping
+- `software`: force software timestamping
+
+Equivalent env override: `CT_PTP_TIME_STAMPING=auto|hardware|software`.
+
 ## Running
 
 ### Master node

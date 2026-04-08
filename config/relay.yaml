@@ -40,6 +40,9 @@ master:
 ptp:
   domain: 0
   transport: UDPv4
+  # Timestamping mode: auto|hardware|software
+  # auto = use hardware when available on each interface, else software.
+  time_stamping: auto
   sync_interval: -3
   announce_interval: 1
   min_delay_req_interval: 0

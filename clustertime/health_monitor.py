@@ -12,6 +12,7 @@ SyncStateMonitor
 from __future__ import annotations
 
 import logging
+import re
 import subprocess
 import threading
 import time
@@ -133,10 +134,14 @@ class SyncStateMonitor:
         self.path_delay_ns: Optional[int] = None
         self.gm_identity: Optional[str] = None
         self._lock = threading.Lock()
+        self._master_offset_re = re.compile(r"master offset\s+([+-]?\d+)")
+        self._path_delay_re = re.compile(r"path delay\s+([+-]?\d+)")
+        self._rms_re = re.compile(r"\brms\s+([+-]?\d+)")
+        self._delay_re = re.compile(r"\bdelay\s+([+-]?\d+)")
 
     def process_line(self, line: str) -> None:
-        if "master offset" in line:
-            self._parse_offset(line)
+        if "master offset" in line or " rms " in line:
+            self._parse_timing_stats(line)
         elif " to SLAVE" in line:
             self._set_state("SLAVE", line)
         elif " to MASTER" in line:
@@ -149,22 +154,43 @@ class SyncStateMonitor:
         elif "grandmaster changed" in line.lower():
             log.warning("[%s] Grandmaster changed: %s", self.name, line.strip())
 
-    def _parse_offset(self, line: str) -> None:
-        # "master offset NNN s2 freq +NNN path delay NNN"
-        try:
-            after = line.split("master offset", 1)[1].split()
-            offset = int(after[0])
-            # path delay is 4 tokens after offset: s2 freq <N> path delay <N>
-            if len(after) >= 6 and after[3] == "delay":
-                delay = int(after[4])
-            else:
-                delay = None
-            with self._lock:
+    def _parse_timing_stats(self, line: str) -> None:
+        """
+        Parse timing stats from multiple ptp4l output formats.
+
+        Supported formats include:
+          - "... master offset <N> ... path delay <N>"
+          - "... rms <N> ... delay <N> ..."
+        """
+        offset: Optional[int] = None
+        delay: Optional[int] = None
+
+        m = self._master_offset_re.search(line)
+        if m:
+            offset = int(m.group(1))
+        else:
+            m = self._rms_re.search(line)
+            if m:
+                # Some ptp4l versions report rms/max/freq/delay without the
+                # "master offset" token. Use RMS as a practical offset proxy.
+                offset = int(m.group(1))
+
+        m = self._path_delay_re.search(line)
+        if m:
+            delay = int(m.group(1))
+        else:
+            m = self._delay_re.search(line)
+            if m:
+                delay = int(m.group(1))
+
+        if offset is None and delay is None:
+            return
+
+        with self._lock:
+            if offset is not None:
                 self.master_offset_ns = offset
-                if delay is not None:
-                    self.path_delay_ns = delay
-        except (IndexError, ValueError):
-            pass
+            if delay is not None:
+                self.path_delay_ns = delay
 
     def _set_state(self, state: str, line: str = "") -> None:
         with self._lock:
