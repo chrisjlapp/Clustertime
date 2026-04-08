@@ -15,6 +15,7 @@ ENV vars (all prefixed CT_):
     CT_PTP_DOMAIN          PTP domain number (default: 0)
     CT_PTP_TRANSPORT       Transport (default: UDPv4)
     CT_PTP_SYNC_INTERVAL   Sync interval as log2 (default: -3)
+    CT_PTP_MINOR_VERSION   PTP minor version: 0 (PTPv2.0) or 1 (PTPv2.1) (default: 0)
     CT_PTP_TIME_STAMPING   software | hardware | auto (default: auto)
     CT_FAILOVER_ENABLED    Enable master health monitoring (default: false)
     CT_FAILOVER_TIMEOUT    Seconds before master declared failed (default: 10)
@@ -35,6 +36,7 @@ class PTPConfig:
     domain: int = 0
     transport: str = "UDPv4"
     sync_interval: int = -3
+    minor_version: int = 0
     announce_interval: int = 1
     min_delay_req_interval: int = 0
     unicast_req_duration: int = 300
@@ -98,6 +100,7 @@ class ClusterTimeConfig:
                 domain=int(ptp_d.get("domain", 0)),
                 transport=ptp_d.get("transport", "UDPv4"),
                 sync_interval=int(ptp_d.get("sync_interval", -3)),
+                minor_version=int(ptp_d.get("minor_version", 0)),
                 announce_interval=int(ptp_d.get("announce_interval", 1)),
                 min_delay_req_interval=int(ptp_d.get("min_delay_req_interval", 0)),
                 unicast_req_duration=int(ptp_d.get("unicast_req_duration", 300)),
@@ -149,6 +152,8 @@ class ClusterTimeConfig:
             cfg.ptp.transport = v
         if v := env.get("CT_PTP_SYNC_INTERVAL"):
             cfg.ptp.sync_interval = int(v)
+        if v := env.get("CT_PTP_MINOR_VERSION"):
+            cfg.ptp.minor_version = int(v)
         if v := env.get("CT_PTP_TIME_STAMPING"):
             cfg.ptp.time_stamping = v
         if v := env.get("CT_FAILOVER_ENABLED"):
@@ -204,4 +209,18 @@ class ClusterTimeConfig:
             raise ValueError(
                 "ptp.time_stamping must be one of: software, hardware, auto "
                 "(or set CT_PTP_TIME_STAMPING accordingly)."
+            )
+        if self.mode == "relay" and not self.dual_interface and ts_mode == "hardware":
+            raise ValueError(
+                "Single-interface relay mode uses macvlan sub-interfaces "
+                "(<iface>.up / <iface>.down). Hardware timestamping is not "
+                "reliable on virtual interfaces with many NIC drivers "
+                "(including Raspberry Pi macb). Use dual-interface relay mode "
+                "with physical NICs for hardware timestamping, or switch to "
+                "ptp.time_stamping=software."
+            )
+        if self.ptp.minor_version not in (0, 1):
+            raise ValueError(
+                "ptp.minor_version must be 0 (PTPv2.0) or 1 (PTPv2.1) "
+                "(or set CT_PTP_MINOR_VERSION accordingly)."
             )

@@ -32,6 +32,7 @@ logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
 logAnnounceInterval     {announce_interval}
 domainNumber            {domain}
+ptp_minor_version       {minor_version}
 time_stamping           {time_stamping}
 twoStepFlag             1
 summary_interval        0
@@ -63,6 +64,7 @@ logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
 logAnnounceInterval     {announce_interval}
 domainNumber            {domain}
+ptp_minor_version       {minor_version}
 time_stamping           {time_stamping}
 twoStepFlag             1
 summary_interval        0
@@ -98,6 +100,7 @@ logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
 logAnnounceInterval     {announce_interval}
 domainNumber            {domain}
+ptp_minor_version       {minor_version}
 time_stamping           {time_stamping}
 twoStepFlag             1
 summary_interval        0
@@ -129,6 +132,7 @@ def generate_configs(
             transport=p.transport,
             domain=p.domain,
             sync_interval=p.sync_interval,
+            minor_version=p.minor_version,
             announce_interval=p.announce_interval,
             min_delay_req=p.min_delay_req_interval,
             unicast_req_duration=p.unicast_req_duration,
@@ -153,6 +157,7 @@ def generate_configs(
             transport=p.transport,
             domain=p.domain,
             sync_interval=p.sync_interval,
+            minor_version=p.minor_version,
             announce_interval=p.announce_interval,
             min_delay_req=p.min_delay_req_interval,
             unicast_req_duration=p.unicast_req_duration,
@@ -168,6 +173,7 @@ def generate_configs(
             transport=p.transport,
             domain=p.domain,
             sync_interval=p.sync_interval,
+            minor_version=p.minor_version,
             announce_interval=p.announce_interval,
             min_delay_req=p.min_delay_req_interval,
             time_stamping=_resolve_time_stamping(p.time_stamping, down_iface),
