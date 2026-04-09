@@ -5,7 +5,7 @@
 
 # Clustertime
 Lots of media applications hardcode certain aspects of PTP to not behave when you get into overlay based networking technologies, as well, some network platforms have limitations on how to forward PTP packets. 
-Clustertime aims to add a simple way to solve this by creating a time Cluster, or "constilation" with master and relay nodes.
+Clustertime aims to add a simple way to solve this by creating a time Cluster, or "constellation" with master and relay nodes.
 
 Simply put, using a PTP Unicast-to-Multicast Relay Appliance. Clustertime bridges a PTPv2 unicast master node to a multicast downstream network, enabling accurate time synchronization across cluster nodes.
 
