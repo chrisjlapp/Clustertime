@@ -35,7 +35,7 @@ upstream_ip: 192.168.1.50/24
 downstream_ip: 192.168.1.51/24
 
 master:
-  ip: 192.168.1.10    # IP address of the master node
+  ip: 192.168.1.10    # Upstream source IP (master or parent relay downstream IP)
 
 ptp:
   domain: 0

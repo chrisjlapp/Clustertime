@@ -118,6 +118,8 @@ summary_interval        0
 
 [{iface}]
 serverOnly              1
+# Allow downstream clients (including tiered relays) to request unicast grants.
+unicast_listen          1
 """
 
 

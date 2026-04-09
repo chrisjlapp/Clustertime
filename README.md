@@ -115,6 +115,21 @@ If a relay (notably some Raspberry Pi 5 setups) shows repeated
 both `ptp.minor_version: 0` and `ptp.minor_version: 1` across peers to confirm
 which interop combination is stable.
 
+### Tiered relay (relay-to-relay unicast)
+
+You can point a relay upstream at the **downstream IP of another relay** to
+build a tiered topology when one master cannot fan out to all clients.
+
+Set `master.ip` on the child relay to the parent relay downstream address:
+
+```yaml
+master:
+  ip: 192.168.1.51   # parent relay downstream IP
+```
+
+Clustertime configures relay downstream ptp4l with `unicast_listen` enabled,
+so child relays can negotiate unicast service from a parent relay over UDPv4.
+
 ### Relay priority configuration
 
 Relay nodes can set BMCA priorities for both upstream and downstream ptp4l
