@@ -18,6 +18,9 @@ ptp:
   multicast_ttl: 1
   # TTL/hop-limit hint for unicast UDP PTP packets.
   unicast_ttl: 1
+  # Raspberry Pi hybrid mode:
+  # when true, master interface is forced to software timestamping on Pi.
+  rpi_hybrid_ts: false
   # Master BMCA priorities (0..255, lower wins)
   master_priority1: 128
   master_priority2: 128

@@ -148,7 +148,7 @@ def generate_configs(
             announce_interval=p.announce_interval,
             min_delay_req=p.min_delay_req_interval,
             unicast_req_duration=p.unicast_req_duration,
-            time_stamping=_resolve_time_stamping(p.time_stamping, cfg.interface),
+            time_stamping=_master_time_stamping_for_iface(cfg, cfg.interface),
             tx_timestamp_timeout=p.tx_timestamp_timeout,
             udp_ttl=p.multicast_ttl,
         )
@@ -246,6 +246,23 @@ def _relay_time_stamping_for_iface(cfg: ClusterTimeConfig, iface: str, role: str
     if cfg.ptp.rpi_hybrid_ts and role == "upstream" and _is_raspberry_pi():
         log.warning(
             "Raspberry Pi hybrid timestamping enabled: forcing upstream interface %s "
+            "to software timestamping",
+            iface,
+        )
+        return "software"
+    return _resolve_time_stamping(cfg.ptp.time_stamping, iface)
+
+
+def _master_time_stamping_for_iface(cfg: ClusterTimeConfig, iface: str) -> str:
+    """
+    Resolve timestamping mode for master role.
+
+    Optional Raspberry Pi hybrid mode forces master to software timestamping
+    on Raspberry Pi devices.
+    """
+    if cfg.ptp.rpi_hybrid_ts and _is_raspberry_pi():
+        log.warning(
+            "Raspberry Pi hybrid timestamping enabled: forcing master interface %s "
             "to software timestamping",
             iface,
         )
