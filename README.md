@@ -9,7 +9,7 @@ Clustertime aims to add a simple way to solve this by creating a time Cluster, o
 
 Simply put, using a PTP Unicast-to-Multicast Relay Appliance. Clustertime bridges a PTPv2 unicast master node to a multicast downstream network, enabling accurate time synchronization across cluster nodes.
 
-Best results are with hardware timestamping on intel 225/226 nic series. Raspberry Pi5 provides realativly good results, but uses hybrid timestamping.
+Best results are with hardware timestamping on intel 225/226 nic series. Raspberry Pi5 provides relatively good, but somtimes mixed results, but uses hybrid timestamping.
 
 ## Requirements
 
