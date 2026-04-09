@@ -194,6 +194,48 @@ sudo python3 -m clustertime.main -c config/master.yaml --mode master
 sudo python3 -m clustertime.main -c config/relay.yaml --mode relay
 ```
 
+## Start automatically on system boot (systemd)
+
+Clustertime includes a helper installer that creates and enables a systemd unit
+for either Docker-based or native startup:
+
+```bash
+sudo ./scripts/install_systemd_service.sh --runtime <docker|native> --node <master|relay>
+```
+
+Examples:
+
+```bash
+# Docker master
+sudo ./scripts/install_systemd_service.sh --runtime docker --node master
+
+# Docker relay
+sudo ./scripts/install_systemd_service.sh --runtime docker --node relay
+
+# Native master
+sudo ./scripts/install_systemd_service.sh --runtime native --node master
+
+# Native relay
+sudo ./scripts/install_systemd_service.sh --runtime native --node relay
+```
+
+What this does:
+
+- Writes a service file in `/etc/systemd/system/`
+- Runs `systemctl daemon-reload`
+- Enables and starts the service immediately (`systemctl enable --now ...`)
+
+Useful service commands:
+
+```bash
+systemctl status clustertime-docker-master.service
+systemctl status clustertime-docker-relay.service
+systemctl status clustertime-native-master.service
+systemctl status clustertime-native-relay.service
+
+journalctl -u clustertime-docker-master.service -f
+```
+
 ## Logs
 
 ```bash
