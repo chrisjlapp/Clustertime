@@ -91,10 +91,10 @@ Clustertime falls back to relay self-identity and logs a warning.
 
 Equivalent env override: `CT_PTP_TIME_STAMPING=auto|hardware|software`.
 
-For Raspberry Pi relay deployments, optional hybrid behavior is available:
+For Raspberry Pi deployments, optional hybrid behavior is available:
 
-- `ptp.rpi_hybrid_ts: true` forces the **relay upstream** ptp4l instance to
-  software timestamping on Raspberry Pi devices.
+- `ptp.rpi_hybrid_ts: true` forces the **relay upstream** and **master** ptp4l
+  instances to software timestamping on Raspberry Pi devices.
 - Downstream instance keeps normal `ptp.time_stamping` behavior.
 
 Equivalent env override: `CT_PTP_RPI_HYBRID_TS=true|false`.

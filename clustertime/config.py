@@ -22,7 +22,8 @@ ENV vars (all prefixed CT_):
     CT_PTP_UNICAST_TTL     Clustertime unicast UDP TTL/hop-limit hint (default: 1)
     CT_PTP_MASTER_PRIORITY1 Master ptp4l priority1 (default: 128)
     CT_PTP_MASTER_PRIORITY2 Master ptp4l priority2 (default: 128)
-    CT_PTP_RPI_HYBRID_TS   Enable Raspberry Pi relay hybrid mode (upstream software TS)
+    CT_PTP_RPI_HYBRID_TS   Enable Raspberry Pi hybrid mode:
+                           relay upstream + master use software timestamping
     CT_PTP_RELAY_PRIORITY1 Relay ptp4l priority1 (default: 255)
     CT_PTP_RELAY_PRIORITY2 Relay ptp4l priority2 (default: 255)
     CT_PTP_DOWNSTREAM_CLOCK_IDENTITY
