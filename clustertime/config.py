@@ -50,6 +50,7 @@ class PTPConfig:
     sync_interval: int = -3
     minor_version: int = 0
     announce_interval: int = 1
+    announce_receipt_timeout: int = 3
     min_delay_req_interval: int = 0
     unicast_req_duration: int = 300
     time_stamping: str = "auto"
@@ -123,6 +124,7 @@ class ClusterTimeConfig:
                 sync_interval=int(ptp_d.get("sync_interval", -3)),
                 minor_version=int(ptp_d.get("minor_version", 0)),
                 announce_interval=int(ptp_d.get("announce_interval", 1)),
+                announce_receipt_timeout=int(ptp_d.get("announce_receipt_timeout", 3)),
                 min_delay_req_interval=int(ptp_d.get("min_delay_req_interval", 0)),
                 unicast_req_duration=int(ptp_d.get("unicast_req_duration", 300)),
                 time_stamping=str(ptp_d.get("time_stamping", "auto")),
@@ -182,6 +184,8 @@ class ClusterTimeConfig:
             cfg.ptp.transport = v
         if v := env.get("CT_PTP_SYNC_INTERVAL"):
             cfg.ptp.sync_interval = int(v)
+        if v := env.get("CT_PTP_ANNOUNCE_RECEIPT_TIMEOUT"):
+            cfg.ptp.announce_receipt_timeout = int(v)
         if v := env.get("CT_PTP_MINOR_VERSION"):
             cfg.ptp.minor_version = int(v)
         if v := env.get("CT_PTP_TIME_STAMPING"):

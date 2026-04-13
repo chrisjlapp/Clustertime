@@ -130,6 +130,22 @@ master:
 Clustertime configures relay downstream ptp4l with `unicast_listen` enabled,
 so child relays can negotiate unicast service from a parent relay over UDPv4.
 
+If a child relay occasionally flips `SLAVE -> LISTENING` on
+`ANNOUNCE_RECEIPT_TIMEOUT_EXPIRES` in tiered topologies, you can increase the
+upstream announce receipt window:
+
+```yaml
+ptp:
+  announce_interval: 0
+  announce_receipt_timeout: 5
+```
+
+Equivalent env override:
+
+```bash
+CT_PTP_ANNOUNCE_RECEIPT_TIMEOUT=5
+```
+
 ### Relay priority configuration
 
 Relay nodes can set BMCA priorities for both upstream and downstream ptp4l

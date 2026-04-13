@@ -69,6 +69,7 @@ udp_ttl                 {udp_ttl}
 logMinDelayReqInterval  {min_delay_req}
 logSyncInterval         {sync_interval}
 logAnnounceInterval     {announce_interval}
+announceReceiptTimeout  {announce_receipt_timeout}
 domainNumber            {domain}
 ptp_minor_version       {minor_version}
 time_stamping           {time_stamping}
@@ -177,6 +178,7 @@ def generate_configs(
             sync_interval=p.sync_interval,
             minor_version=p.minor_version,
             announce_interval=p.announce_interval,
+            announce_receipt_timeout=p.announce_receipt_timeout,
             min_delay_req=p.min_delay_req_interval,
             unicast_req_duration=p.unicast_req_duration,
             master_ip=cfg.master.ip,
