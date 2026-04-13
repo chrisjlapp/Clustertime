@@ -72,6 +72,8 @@ ptp:
   # downstream_clock_identity:
   sync_interval: -3
   announce_interval: 1
+  # Number of missed Announce intervals before upstream ptp4l drops to LISTENING.
+  announce_receipt_timeout: 3
   min_delay_req_interval: 0
 
 # Phase 2 — Master failure detection
