@@ -328,7 +328,7 @@ Typical causes and checks:
      time_stamping: software
    ```
 
-3. Ensure the chosen interface is the actual upstream NIC used to receive master traffic (especially in dual-interface setups with `upstream_interface` / `downstream_interface`).
+3. Ensure the chosen interface is the actual upstream NIC used to receive master traffic (especially in multi-interface setups with `upstream_interface` / `downstream_interfaces`).
 
 4. Check for offload/driver differences between the two relay devices (driver version, firmware, NIC model), since one device working and another failing is often a hardware/driver timestamp path mismatch.
 

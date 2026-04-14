@@ -9,17 +9,19 @@
 #     <interface>.up  — upstream unicast slave
 #     <interface>.down — downstream multicast master
 #
-# Dual-interface mode:
-#   Uncomment upstream_interface / downstream_interface below.
+# Multi-interface mode:
+#   Uncomment upstream_interface and downstream_interfaces below.
 #   No macvlan sub-interfaces are created.
 
 mode: relay
 interface: enp2s0
 log_level: INFO
 
-# Dual-interface mode (optional — leave commented for single-interface):
+# Multi-interface mode (optional — leave commented for single-interface):
 # upstream_interface: eth0
-# downstream_interface: eth1
+# downstream_interfaces:
+#   - eth1
+#   - eth2
 
 # IP address (with prefix) to assign to the upstream macvlan sub-interface.
 # Required in single-interface mode.  Must be an unused IP on the same subnet

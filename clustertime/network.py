@@ -16,25 +16,25 @@ from __future__ import annotations
 
 import logging
 import subprocess
-from typing import Tuple
+from typing import List, Tuple
 
 from .config import ClusterTimeConfig
 
 log = logging.getLogger(__name__)
 
 
-def setup_relay_interfaces(cfg: ClusterTimeConfig) -> Tuple[str, str]:
+def setup_relay_interfaces(cfg: ClusterTimeConfig) -> Tuple[str, List[str]]:
     """
     Ensure upstream/downstream interfaces exist.
-    Returns (upstream_iface, downstream_iface).
+    Returns (upstream_iface, downstream_ifaces).
     """
     if cfg.dual_interface:
         log.info(
-            "Dual-interface mode: upstream=%s downstream=%s",
+            "Multi-interface mode: upstream=%s downstream=%s",
             cfg.upstream_interface,
-            cfg.downstream_interface,
+            cfg.downstream_interfaces,
         )
-        return cfg.upstream_interface, cfg.downstream_interface  # type: ignore[return-value]
+        return cfg.upstream_interface, cfg.downstream_interfaces  # type: ignore[return-value]
 
     base = cfg.interface
     up = f"{base}.up"
@@ -65,7 +65,7 @@ def setup_relay_interfaces(cfg: ClusterTimeConfig) -> Tuple[str, str]:
         log.info("Assigned %s to downstream interface %s", cfg.downstream_ip, down)
 
     log.info("macvlan interfaces ready: %s, %s", up, down)
-    return up, down
+    return up, [down]
 
 
 def teardown_relay_interfaces(cfg: ClusterTimeConfig) -> None:

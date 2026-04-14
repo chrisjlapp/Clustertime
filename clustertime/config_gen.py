@@ -133,7 +133,7 @@ def generate_configs(
     Write ptp4l .conf files and return a dict of role → file path.
 
     Master mode  → {"master": "/var/run/clustertime/ptp4l_master.conf"}
-    Relay mode   → {"upstream": "...", "downstream": "..."}
+    Relay mode   → {"upstream": "...", "downstream:<iface>": "..."}
     """
     os.makedirs(conf_dir, exist_ok=True)
     paths: Dict[str, str] = {}
@@ -162,12 +162,12 @@ def generate_configs(
     elif cfg.mode == "relay":
         if cfg.dual_interface:
             up_iface = cfg.upstream_interface
-            down_iface = cfg.downstream_interface
+            down_ifaces = cfg.downstream_interfaces
         else:
             # Single physical interface: use macvlan sub-interfaces
             # (created by network.py before config is applied)
             up_iface = f"{cfg.interface}.up"
-            down_iface = f"{cfg.interface}.down"
+            down_ifaces = [f"{cfg.interface}.down"]
 
         up_content = _RELAY_UPSTREAM_CONF.format(
             iface=up_iface,
@@ -190,24 +190,26 @@ def generate_configs(
         _write(up_path, up_content)
         paths["upstream"] = up_path
 
-        down_content = _RELAY_DOWNSTREAM_CONF.format(
-            iface=down_iface,
-            transport=p.transport,
-            relay_priority1=p.relay_priority1,
-            relay_priority2=p.relay_priority2,
-            domain=p.domain,
-            sync_interval=p.sync_interval,
-            minor_version=p.minor_version,
-            announce_interval=p.announce_interval,
-            min_delay_req=p.min_delay_req_interval,
-            time_stamping=_relay_time_stamping_for_iface(cfg, down_iface, role="downstream"),
-            tx_timestamp_timeout=p.tx_timestamp_timeout,
-            udp_ttl=p.multicast_ttl,
-            clock_identity_line=_clock_identity_line(p.downstream_clock_identity),
-        )
-        down_path = os.path.join(conf_dir, "ptp4l_downstream.conf")
-        _write(down_path, down_content)
-        paths["downstream"] = down_path
+        for idx, down_iface in enumerate(down_ifaces):
+            down_content = _RELAY_DOWNSTREAM_CONF.format(
+                iface=down_iface,
+                transport=p.transport,
+                relay_priority1=p.relay_priority1,
+                relay_priority2=p.relay_priority2,
+                domain=p.domain,
+                sync_interval=p.sync_interval,
+                minor_version=p.minor_version,
+                announce_interval=p.announce_interval,
+                min_delay_req=p.min_delay_req_interval,
+                time_stamping=_relay_time_stamping_for_iface(cfg, down_iface, role="downstream"),
+                tx_timestamp_timeout=p.tx_timestamp_timeout,
+                udp_ttl=p.multicast_ttl,
+                clock_identity_line=_clock_identity_line(p.downstream_clock_identity),
+            )
+            suffix = f"_{idx}" if idx else ""
+            down_path = os.path.join(conf_dir, f"ptp4l_downstream{suffix}.conf")
+            _write(down_path, down_content)
+            paths[f"downstream:{down_iface}"] = down_path
 
     return paths
 
