@@ -50,8 +50,8 @@ def run_relay(cfg: ClusterTimeConfig) -> None:
     )
 
     # --- Network setup -------------------------------------------------------
-    up_iface, down_iface = setup_relay_interfaces(cfg)
-    log.info("Upstream interface: %s | Downstream interface: %s", up_iface, down_iface)
+    up_iface, down_ifaces = setup_relay_interfaces(cfg)
+    log.info("Upstream interface: %s | Downstream interfaces: %s", up_iface, down_ifaces)
 
     # --- Config files --------------------------------------------------------
     paths = generate_configs(cfg)
@@ -70,20 +70,22 @@ def run_relay(cfg: ClusterTimeConfig) -> None:
             line_callback=sync_monitor.process_line,
         )
     )
-    mgr.add(
-        ManagedProcess(
-            name="ptp4l-downstream",
-            cmd=["/usr/sbin/ptp4l", "-f", paths["downstream"], "-m"],
-            log_prefix="ptp4l[downstream]",
+    for idx, down_iface in enumerate(down_ifaces):
+        conf_key = f"downstream:{down_iface}"
+        mgr.add(
+            ManagedProcess(
+                name=f"ptp4l-downstream-{idx}",
+                cmd=["/usr/sbin/ptp4l", "-f", paths[conf_key], "-m"],
+                log_prefix=f"ptp4l[downstream:{down_iface}]",
+            )
         )
-    )
 
     mgr.start_all()
     log.info(
         "Relay node running | upstream (unicast slave) → %s | "
         "downstream (multicast master) → %s",
         up_iface,
-        down_iface,
+        ",".join(down_ifaces),
     )
 
     # --- Phase 2: master health monitoring -----------------------------------

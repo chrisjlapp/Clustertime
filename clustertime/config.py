@@ -5,7 +5,8 @@ ENV vars (all prefixed CT_):
     CT_MODE                master | relay
     CT_INTERFACE           Primary network interface (default: eth0)
     CT_UPSTREAM_INTERFACE  Relay dual-iface: upstream NIC
-    CT_DOWNSTREAM_INTERFACE Relay dual-iface: downstream NIC
+    CT_DOWNSTREAM_INTERFACE Relay multi-iface: primary downstream NIC
+    CT_DOWNSTREAM_INTERFACES Relay multi-iface: comma-separated downstream NICs
     CT_MASTER_IP           Master node IP (required for relay)
     CT_UPSTREAM_IP         IP/prefix for upstream macvlan, e.g. 192.168.1.50/24
                            (required in single-interface relay mode)
@@ -84,6 +85,7 @@ class ClusterTimeConfig:
     interface: str = "eth0"
     upstream_interface: Optional[str] = None
     downstream_interface: Optional[str] = None
+    downstream_interfaces: List[str] = field(default_factory=list)
     # IP address (with prefix) assigned to the upstream macvlan in
     # single-interface mode, e.g. "192.168.1.50/24".  Required so that
     # ptp4l can send unicast SIGNALING packets to the master.
@@ -98,7 +100,13 @@ class ClusterTimeConfig:
 
     @property
     def dual_interface(self) -> bool:
-        return bool(self.upstream_interface and self.downstream_interface)
+        return bool(self.upstream_interface and self.downstream_interfaces)
+
+    @property
+    def primary_downstream_interface(self) -> Optional[str]:
+        if self.downstream_interfaces:
+            return self.downstream_interfaces[0]
+        return self.downstream_interface
 
     # ------------------------------------------------------------------
     # Construction helpers
@@ -110,11 +118,18 @@ class ClusterTimeConfig:
         master_d = data.get("master", {})
         failover_d = data.get("failover", {})
 
-        return cls(
+        downstream_interfaces = data.get("downstream_interfaces") or []
+        if isinstance(downstream_interfaces, str):
+            downstream_interfaces = [downstream_interfaces]
+
+        cfg = cls(
             mode=data.get("mode", "relay"),
             interface=data.get("interface", "eth0"),
             upstream_interface=data.get("upstream_interface"),
             downstream_interface=data.get("downstream_interface"),
+            downstream_interfaces=[
+                item.strip() for item in downstream_interfaces if str(item).strip()
+            ],
             upstream_ip=data.get("upstream_ip") or None,
             downstream_ip=data.get("downstream_ip") or None,
             master=MasterConfig(ip=master_d.get("ip")),
@@ -146,6 +161,9 @@ class ClusterTimeConfig:
             ),
             log_level=data.get("log_level", "INFO"),
         )
+        if cfg.downstream_interface and cfg.downstream_interface not in cfg.downstream_interfaces:
+            cfg.downstream_interfaces.insert(0, cfg.downstream_interface)
+        return cfg
 
     @classmethod
     def from_yaml(cls, path: str) -> "ClusterTimeConfig":
@@ -170,6 +188,12 @@ class ClusterTimeConfig:
             cfg.upstream_interface = v
         if v := env.get("CT_DOWNSTREAM_INTERFACE"):
             cfg.downstream_interface = v
+            if v not in cfg.downstream_interfaces:
+                cfg.downstream_interfaces.insert(0, v)
+        if v := env.get("CT_DOWNSTREAM_INTERFACES"):
+            cfg.downstream_interfaces = [item.strip() for item in v.split(",") if item.strip()]
+            if cfg.downstream_interfaces:
+                cfg.downstream_interface = cfg.downstream_interfaces[0]
         if v := env.get("CT_UPSTREAM_IP"):
             cfg.upstream_ip = v
         if v := env.get("CT_DOWNSTREAM_IP"):
@@ -224,8 +248,15 @@ class ClusterTimeConfig:
             raise ValueError(f"Invalid mode {self.mode!r}. Must be 'master' or 'relay'.")
         if self.mode == "relay" and not self.master.ip:
             raise ValueError("mode=relay requires master.ip to be set (CT_MASTER_IP or config).")
-        if self.dual_interface and self.upstream_interface == self.downstream_interface:
-            raise ValueError("upstream_interface and downstream_interface must differ.")
+        if self.mode == "relay":
+            if self.downstream_interface and self.downstream_interface not in self.downstream_interfaces:
+                self.downstream_interfaces.insert(0, self.downstream_interface)
+            if self.downstream_interfaces and not self.downstream_interface:
+                self.downstream_interface = self.downstream_interfaces[0]
+        if self.dual_interface and self.upstream_interface in self.downstream_interfaces:
+            raise ValueError("upstream_interface and downstream_interface(s) must differ.")
+        if len(set(self.downstream_interfaces)) != len(self.downstream_interfaces):
+            raise ValueError("downstream_interfaces contains duplicate interface names.")
         if self.mode == "relay" and not self.dual_interface and not self.upstream_ip:
             raise ValueError(
                 "Single-interface relay mode requires upstream_ip to be set "
