@@ -115,7 +115,7 @@ ptp_minor_version       {minor_version}
 time_stamping           {time_stamping}
 twoStepFlag             1
 summary_interval        0
-{clock_identity_line}uds_address             /var/run/ptp4l_downstream
+{clock_identity_line}uds_address             {uds_address}
 
 [{iface}]
 serverOnly              1
@@ -205,6 +205,7 @@ def generate_configs(
                 tx_timestamp_timeout=p.tx_timestamp_timeout,
                 udp_ttl=p.multicast_ttl,
                 clock_identity_line=_clock_identity_line(p.downstream_clock_identity),
+                uds_address=_downstream_uds_address(idx),
             )
             suffix = f"_{idx}" if idx else ""
             down_path = os.path.join(conf_dir, f"ptp4l_downstream{suffix}.conf")
@@ -274,6 +275,10 @@ def _master_time_stamping_for_iface(cfg: ClusterTimeConfig, iface: str) -> str:
         )
         return "software"
     return _resolve_time_stamping(cfg.ptp.time_stamping, iface)
+
+def _downstream_uds_address(index: int) -> str:
+    suffix = f"_{index}" if index else ""
+    return f"/var/run/ptp4l_downstream{suffix}"
 
 
 def _clock_identity_line(identity: str | None) -> str:
