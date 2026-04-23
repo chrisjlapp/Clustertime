@@ -46,10 +46,7 @@ hybrid_e2e              1
 unicast_req_duration    {unicast_req_duration}
 uds_address             /var/run/ptp4l_master
 
-[{iface}]
-masterOnly              1
-# Accept unicast negotiation requests from relay clients.
-unicast_listen          1
+{interface_blocks}
 """
 
 _RELAY_UPSTREAM_CONF = """\
@@ -140,8 +137,27 @@ def generate_configs(
     p = cfg.ptp
 
     if cfg.mode == "master":
+        bind_ifaces = cfg.master_bind_interfaces
+        interface_blocks = "\n".join(
+            [
+                "\n".join(
+                    [
+                        f"[{iface}]",
+                        "serverOnly              1",
+                        "inhibit_multicast_service "
+                        + (
+                            "1"
+                            if cfg.master_inhibit_multicast_service.get(iface, False)
+                            else "0"
+                        ),
+                        "# Accept unicast negotiation requests from relay clients.",
+                        "unicast_listen          1",
+                    ]
+                )
+                for iface in bind_ifaces
+            ]
+        )
         content = _MASTER_CONF.format(
-            iface=cfg.interface,
             transport=p.transport,
             master_priority1=p.master_priority1,
             master_priority2=p.master_priority2,
@@ -151,9 +167,10 @@ def generate_configs(
             announce_interval=p.announce_interval,
             min_delay_req=p.min_delay_req_interval,
             unicast_req_duration=p.unicast_req_duration,
-            time_stamping=_master_time_stamping_for_iface(cfg, cfg.interface),
+            time_stamping=_master_time_stamping_for_iface(cfg, bind_ifaces[0]),
             tx_timestamp_timeout=p.tx_timestamp_timeout,
             udp_ttl=p.multicast_ttl,
+            interface_blocks=interface_blocks,
         )
         path = os.path.join(conf_dir, "ptp4l_master.conf")
         _write(path, content)

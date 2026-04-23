@@ -39,6 +39,14 @@ At minimum, set the correct network interface and (for relay) the master IP:
 ```yaml
 # config/master.yaml
 interface: eth0   # change to your interface
+# Optional multi-interface master mode:
+# master_interfaces: [eth0, eth1]
+# Optional per-interface master flags:
+# master_interface_options:
+#   eth0:
+#     inhibit_multicast_service: false
+#   eth1:
+#     inhibit_multicast_service: true
 
 # config/relay.yaml
 interface: eth0
@@ -47,6 +55,10 @@ master:
 ```
 
 Any config value can also be overridden via environment variables (e.g. `CT_INTERFACE`, `CT_MODE`, `CT_MASTER_IP`).
+For multi-interface master serving, use `master_interfaces` in YAML or
+`CT_MASTER_INTERFACES=eth0,eth1`.
+`inhibit_multicast_service` defaults to `false` for each master interface and
+can be set independently under `master_interface_options`.
 
 ### Relay downstream identity override
 

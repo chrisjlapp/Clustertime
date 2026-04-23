@@ -4,6 +4,16 @@
 
 mode: master
 interface: eth0      # Network interface to serve PTP on
+# Optional: serve PTP on multiple interfaces from one master ptp4l instance.
+# master_interfaces:
+#   - eth0
+#   - eth1
+# Optional per-interface overrides for master mode:
+# master_interface_options:
+#   eth0:
+#     inhibit_multicast_service: false
+#   eth1:
+#     inhibit_multicast_service: true
 log_level: INFO
 
 ptp:
