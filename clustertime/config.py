@@ -4,6 +4,7 @@ ENV vars (all prefixed CT_):
     CT_CONFIG              Path to YAML config file
     CT_MODE                master | relay
     CT_INTERFACE           Primary network interface (default: eth0)
+    CT_MASTER_INTERFACES   Master multi-iface mode: comma-separated serving NICs
     CT_UPSTREAM_INTERFACE  Relay dual-iface: upstream NIC
     CT_DOWNSTREAM_INTERFACE Relay multi-iface: primary downstream NIC
     CT_DOWNSTREAM_INTERFACES Relay multi-iface: comma-separated downstream NICs
@@ -39,7 +40,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import yaml
 
@@ -83,6 +84,10 @@ class FailoverConfig:
 class ClusterTimeConfig:
     mode: str = "relay"
     interface: str = "eth0"
+    master_interfaces: List[str] = field(default_factory=list)
+    # Per-master-interface toggle for ptp4l inhibit_multicast_service.
+    # Keys are interface names; values default to False when missing.
+    master_inhibit_multicast_service: Dict[str, bool] = field(default_factory=dict)
     upstream_interface: Optional[str] = None
     downstream_interface: Optional[str] = None
     downstream_interfaces: List[str] = field(default_factory=list)
@@ -108,6 +113,12 @@ class ClusterTimeConfig:
             return self.downstream_interfaces[0]
         return self.downstream_interface
 
+    @property
+    def master_bind_interfaces(self) -> List[str]:
+        if self.master_interfaces:
+            return self.master_interfaces
+        return [self.interface]
+
     # ------------------------------------------------------------------
     # Construction helpers
     # ------------------------------------------------------------------
@@ -121,10 +132,25 @@ class ClusterTimeConfig:
         downstream_interfaces = data.get("downstream_interfaces") or []
         if isinstance(downstream_interfaces, str):
             downstream_interfaces = [downstream_interfaces]
+        master_interfaces = data.get("master_interfaces") or []
+        if isinstance(master_interfaces, str):
+            master_interfaces = [item.strip() for item in master_interfaces.split(",")]
+        master_iface_options = data.get("master_interface_options") or {}
+        inhibit_map: Dict[str, bool] = {}
+        if isinstance(master_iface_options, dict):
+            for iface, opts in master_iface_options.items():
+                if isinstance(opts, dict):
+                    inhibit_map[str(iface).strip()] = bool(
+                        opts.get("inhibit_multicast_service", False)
+                    )
 
         cfg = cls(
             mode=data.get("mode", "relay"),
             interface=data.get("interface", "eth0"),
+            master_interfaces=[item.strip() for item in master_interfaces if str(item).strip()],
+            master_inhibit_multicast_service={
+                k: v for k, v in inhibit_map.items() if k
+            },
             upstream_interface=data.get("upstream_interface"),
             downstream_interface=data.get("downstream_interface"),
             downstream_interfaces=[
@@ -163,6 +189,8 @@ class ClusterTimeConfig:
         )
         if cfg.downstream_interface and cfg.downstream_interface not in cfg.downstream_interfaces:
             cfg.downstream_interfaces.insert(0, cfg.downstream_interface)
+        if cfg.master_interfaces and cfg.interface == "eth0":
+            cfg.interface = cfg.master_interfaces[0]
         return cfg
 
     @classmethod
@@ -184,6 +212,10 @@ class ClusterTimeConfig:
             cfg.mode = v
         if v := env.get("CT_INTERFACE"):
             cfg.interface = v
+        if v := env.get("CT_MASTER_INTERFACES"):
+            cfg.master_interfaces = [item.strip() for item in v.split(",") if item.strip()]
+            if cfg.master_interfaces:
+                cfg.interface = cfg.master_interfaces[0]
         if v := env.get("CT_UPSTREAM_INTERFACE"):
             cfg.upstream_interface = v
         if v := env.get("CT_DOWNSTREAM_INTERFACE"):
@@ -246,6 +278,24 @@ class ClusterTimeConfig:
     def validate(self) -> None:
         if self.mode not in ("master", "relay"):
             raise ValueError(f"Invalid mode {self.mode!r}. Must be 'master' or 'relay'.")
+        if self.mode == "master":
+            if not self.master_bind_interfaces:
+                raise ValueError(
+                    "mode=master requires at least one serving interface "
+                    "(set interface, master_interfaces, or CT_MASTER_INTERFACES)."
+                )
+            if len(set(self.master_bind_interfaces)) != len(self.master_bind_interfaces):
+                raise ValueError("master_interfaces contains duplicate interface names.")
+            unknown_master_opts = (
+                set(self.master_inhibit_multicast_service.keys())
+                - set(self.master_bind_interfaces)
+            )
+            if unknown_master_opts:
+                raise ValueError(
+                    "master_interface_options includes interface(s) not present in "
+                    "master_interfaces/interface: "
+                    + ", ".join(sorted(unknown_master_opts))
+                )
         if self.mode == "relay" and not self.master.ip:
             raise ValueError("mode=relay requires master.ip to be set (CT_MASTER_IP or config).")
         if self.mode == "relay":
