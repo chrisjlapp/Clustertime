@@ -20,6 +20,8 @@ _RESTART_COOLDOWN = 5  # seconds to wait before restarting a crashed process
 
 
 def run_master(cfg: ClusterTimeConfig) -> None:
+    _warn_if_master_timescale_needs_validation(cfg)
+
     log.info(
         "Starting master node | interface=%s | domain=%d | sync_interval=%d",
         cfg.interface,
@@ -47,6 +49,26 @@ def run_master(cfg: ClusterTimeConfig) -> None:
     )
 
     _watch_loop(mgr)
+
+
+def _warn_if_master_timescale_needs_validation(cfg: ClusterTimeConfig) -> None:
+    """
+    Flag a common UTC/TAI pitfall for direct multicast clients.
+
+    linuxptp advertises different time-scale semantics depending on timestamping
+    mode when the node is the domain server. Mixed client expectations on the
+    master multicast segment can appear as a stable seconds-level offset.
+    """
+    mode = (cfg.ptp.time_stamping or "auto").strip().lower()
+    if mode == "software":
+        return
+    log.warning(
+        "Master ptp.time_stamping=%s. Direct multicast clients (for example "
+        "switches) should be validated for UTC/TAI interpretation using "
+        "`pmc GET TIME_PROPERTIES_DATA_SET` and `GET TIME_STATUS_NP` on this "
+        "segment if you observe stable second-level offsets.",
+        mode,
+    )
 
 
 def _watch_loop(mgr: ProcessManager) -> None:
