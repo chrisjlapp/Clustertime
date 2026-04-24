@@ -3,7 +3,10 @@
 A relay node runs two ptp4l instances:
 
   ptp4l-upstream   — unicast slave to the master node.
-                     Syncs CLOCK_REALTIME via software timestamping.
+                     In software timestamping mode it disciplines
+                     CLOCK_REALTIME directly; in hardware mode a phc2sys
+                     sidecar is started to transfer PHC lock into
+                     CLOCK_REALTIME.
 
   ptp4l-downstream — multicast master to local PTP clients.
                      free_running=1: distributes the (already-synced)
@@ -19,6 +22,7 @@ Phase 2 adds a MasterHealthMonitor that pings the master and logs failures.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import subprocess
 import time
@@ -70,6 +74,39 @@ def run_relay(cfg: ClusterTimeConfig) -> None:
             line_callback=sync_monitor.process_line,
         )
     )
+    upstream_ts = _read_time_stamping_mode(paths["upstream"])
+    if upstream_ts == "hardware":
+        # In hardware timestamping mode, ptp4l primarily disciplines the PHC.
+        # Run phc2sys so relay downstream (free_running system clock) tracks
+        # the same master-referenced timebase.
+        mgr.add(
+            ManagedProcess(
+                name="phc2sys-upstream",
+                cmd=[
+                    "/usr/sbin/phc2sys",
+                    "-f",
+                    paths["upstream"],
+                    "-s",
+                    up_iface,
+                    "-c",
+                    "CLOCK_REALTIME",
+                    "-w",
+                    "-m",
+                ],
+                log_prefix="phc2sys[upstream]",
+            )
+        )
+        log.info(
+            "Enabled phc2sys on relay upstream interface %s "
+            "(hardware timestamp mode) to discipline CLOCK_REALTIME via %s.",
+            up_iface,
+            paths["upstream"],
+        )
+    elif upstream_ts:
+        log.info(
+            "Relay upstream time_stamping=%s; phc2sys sidecar not required.",
+            upstream_ts,
+        )
     for idx, down_iface in enumerate(down_ifaces):
         conf_key = f"downstream:{down_iface}"
         mgr.add(
@@ -222,3 +259,25 @@ def _derive_clock_identity_from_master_mac(master_ip: str) -> Optional[str]:
     clock_id_octets = mac_octets[:3] + ["ff", "fe"] + mac_octets[3:]
     compact = "".join(clock_id_octets)
     return f"{compact[:6]}.{compact[6:10]}.{compact[10:]}"
+
+
+def _read_time_stamping_mode(conf_path: str) -> Optional[str]:
+    if not conf_path:
+        return None
+    if not os.path.exists(conf_path):
+        return None
+    try:
+        with open(conf_path) as fh:
+            for raw in fh:
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if not line.lower().startswith("time_stamping"):
+                    continue
+                parts = line.split()
+                if len(parts) < 2:
+                    return None
+                return parts[1].strip().lower()
+    except OSError:
+        return None
+    return None
