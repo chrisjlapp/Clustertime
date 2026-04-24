@@ -535,9 +535,11 @@ announces PTP timescale and relies on `phc2sys` to maintain UTC/TAI offset
 handling for system clock users.
 
 In Clustertime hardware mode:
-- **Master** runs `phc2sys -s CLOCK_REALTIME -c <iface> -O 0` to discipline PHC
-  from `CLOCK_REALTIME`.
-- **Relay** runs `phc2sys` to discipline `CLOCK_REALTIME` from upstream PHC.
+- **Master** runs `phc2sys -f <master.conf> -s CLOCK_REALTIME -c <iface> -w`
+  to discipline PHC from `CLOCK_REALTIME` using the same linuxptp dataset/UTC
+  context as `ptp4l`.
+- **Relay** runs `phc2sys -f <upstream.conf> -s <up_iface> -c CLOCK_REALTIME -O 0`
+  so relay `CLOCK_REALTIME` follows upstream PHC without UTC/TAI reinterpretation.
 
 #### Why this can happen even when *all nodes use hardware timestamping*
 
@@ -555,7 +557,20 @@ In that case:
 Use `phc2sys` on each relay in hardware mode so PHC lock is transferred to
 `CLOCK_REALTIME` before downstream multicast is served.
 
-If relay logs show `phc2sys: Waiting for ptp4l...` continuously while upstream
-`ptp4l` already prints stable `rms/freq/delay` lines, verify `phc2sys` is using
-the same `uds_address` as relay upstream `ptp4l` (Clustertime passes the
-generated upstream config file to `phc2sys` so the addresses match).
+If relay `phc2sys` hovers around ~37-second offsets or jumps between near-zero
+and ~37 seconds, that usually indicates UTC/TAI reinterpretation mismatch.
+Relay sidecars therefore use explicit `-O 0` to keep PHC and `CLOCK_REALTIME`
+in the same timescale on the relay host.
+
+`phc2sys` offset logs are in **nanoseconds**. For example, an offset around
+`36889711156` means ~36.9 seconds, which is typically a UTC/TAI context issue
+rather than a normal steady-state servo error.
+
+If you see `freq +100000000` or `-100000000` for long periods, the servo is
+railed at its configured frequency limit and still trying to recover a large
+offset. Clustertime enables `-S 1.0` on phc2sys sidecars so second-level
+startup errors can be stepped quickly instead of taking minutes to slew down.
+
+By contrast, offsets in the low microseconds-to-tens-of-microseconds range
+(`~5,000` to `~30,000` ns) that trend downward after `SLAVE` lock are expected
+during convergence and usually indicate healthy phc2sys behavior.
