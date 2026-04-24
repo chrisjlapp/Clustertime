@@ -59,6 +59,8 @@ def run_master(cfg: ClusterTimeConfig) -> None:
                     "-c",
                     cfg.interface,
                     "-w",
+                    "-S",
+                    "1.0",
                     "-m",
                 ],
                 log_prefix="phc2sys[master]",

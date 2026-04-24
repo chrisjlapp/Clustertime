@@ -91,6 +91,8 @@ def run_relay(cfg: ClusterTimeConfig) -> None:
                     "-c",
                     "CLOCK_REALTIME",
                     "-w",
+                    "-S",
+                    "1.0",
                     "-m",
                 ],
                 log_prefix="phc2sys[upstream]",

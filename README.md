@@ -564,3 +564,8 @@ generated upstream config file to `phc2sys` so the addresses match).
 `phc2sys` offset logs are in **nanoseconds**. For example, an offset around
 `36889711156` means ~36.9 seconds, which is typically a UTC/TAI context issue
 rather than a normal steady-state servo error.
+
+If you see `freq +100000000` or `-100000000` for long periods, the servo is
+railed at its configured frequency limit and still trying to recover a large
+offset. Clustertime enables `-S 1.0` on phc2sys sidecars so second-level
+startup errors can be stepped quickly instead of taking minutes to slew down.
