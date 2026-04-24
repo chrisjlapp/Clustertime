@@ -77,6 +77,26 @@ def run_master(cfg: ClusterTimeConfig) -> None:
     _watch_loop(mgr)
 
 
+def _warn_if_master_timescale_needs_validation(cfg: ClusterTimeConfig) -> None:
+    """
+    Emit operational guidance for setups likely to need announce/timescale checks.
+
+    We keep startup non-blocking here and only log a reminder because the
+    condition depends on downstream device behavior (switch profile/timescale
+    handling), not only local config.
+    """
+    mode = (cfg.ptp.time_stamping or "").strip().lower()
+    if mode not in {"software", "auto"}:
+        return
+    log.warning(
+        "Master time_stamping=%s can require downstream timescale/profile "
+        "validation on some switches (e.g. stable ~20s offsets). "
+        "If observed, inspect TIME_PROPERTIES_DATA_SET/TIME_STATUS_NP via pmc "
+        "on the master segment.",
+        mode or "unknown",
+    )
+
+
 def _read_time_stamping_mode(conf_path: str) -> Optional[str]:
     if not conf_path or not os.path.exists(conf_path):
         return None
