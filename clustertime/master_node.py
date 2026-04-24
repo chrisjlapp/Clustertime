@@ -22,6 +22,8 @@ _RESTART_COOLDOWN = 5  # seconds to wait before restarting a crashed process
 
 
 def run_master(cfg: ClusterTimeConfig) -> None:
+    _warn_if_master_timescale_needs_validation(cfg)
+
     log.info(
         "Starting master node | interface=%s | domain=%d | sync_interval=%d",
         cfg.interface,
