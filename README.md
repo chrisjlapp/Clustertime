@@ -538,7 +538,8 @@ In Clustertime hardware mode:
 - **Master** runs `phc2sys -f <master.conf> -s CLOCK_REALTIME -c <iface> -w`
   to discipline PHC from `CLOCK_REALTIME` using the same linuxptp dataset/UTC
   context as `ptp4l`.
-- **Relay** runs `phc2sys` to discipline `CLOCK_REALTIME` from upstream PHC.
+- **Relay** runs `phc2sys -f <upstream.conf> -s <up_iface> -c CLOCK_REALTIME -O 0`
+  so relay `CLOCK_REALTIME` follows upstream PHC without UTC/TAI reinterpretation.
 
 #### Why this can happen even when *all nodes use hardware timestamping*
 
@@ -556,10 +557,10 @@ In that case:
 Use `phc2sys` on each relay in hardware mode so PHC lock is transferred to
 `CLOCK_REALTIME` before downstream multicast is served.
 
-If relay logs show `phc2sys: Waiting for ptp4l...` continuously while upstream
-`ptp4l` already prints stable `rms/freq/delay` lines, verify `phc2sys` is using
-the same `uds_address` as relay upstream `ptp4l` (Clustertime passes the
-generated upstream config file to `phc2sys` so the addresses match).
+If relay `phc2sys` hovers around ~37-second offsets or jumps between near-zero
+and ~37 seconds, that usually indicates UTC/TAI reinterpretation mismatch.
+Relay sidecars therefore use explicit `-O 0` to keep PHC and `CLOCK_REALTIME`
+in the same timescale on the relay host.
 
 `phc2sys` offset logs are in **nanoseconds**. For example, an offset around
 `36889711156` means ~36.9 seconds, which is typically a UTC/TAI context issue
