@@ -535,7 +535,8 @@ announces PTP timescale and relies on `phc2sys` to maintain UTC/TAI offset
 handling for system clock users.
 
 In Clustertime hardware mode:
-- **Master** runs `phc2sys` to discipline PHC from `CLOCK_REALTIME`.
+- **Master** runs `phc2sys -s CLOCK_REALTIME -c <iface> -O 0` to discipline PHC
+  from `CLOCK_REALTIME`.
 - **Relay** runs `phc2sys` to discipline `CLOCK_REALTIME` from upstream PHC.
 
 #### Why this can happen even when *all nodes use hardware timestamping*
