@@ -493,3 +493,69 @@ For Raspberry Pi 5 specifically: if you need hardware timestamping, run relay in
 dual-interface mode using two physical NICs (for example onboard `eth0` + a USB
 Ethernet adapter). Single-interface relay mode relies on macvlan virtual
 interfaces and is not a reliable hardware timestamping path on `macb`.
+
+### Troubleshooting a consistent ~20 second offset on a switch
+
+If relay nodes are tightly in sync with each other, but a switch directly
+connected to the **master multicast** segment is consistently off by roughly
+20 seconds, focus on announce/timescale interpretation on that switch path
+instead of relay lock quality.
+
+Typical pattern:
+- Relay unicast lock to master looks healthy (normal `rms/freq/delay` lines).
+- Relay multicast clients look correct.
+- One switch on the master-facing multicast segment shows a stable seconds-level
+  offset (for example ~20 s).
+
+That pattern usually points to one of:
+- Profile mismatch (PTPv2 default profile vs 802.1AS/gPTP expectations)
+- UTC/TAI handling mismatch on the switch
+- Domain/profile settings applied differently on that interface or VLAN
+
+Quick checks:
+1. Verify the switch is in the same PTP profile/domain as the master.
+2. Inspect master announce/status datasets from a Linux host on that segment:
+
+   ```bash
+   pmc -u -b 0 'GET TIME_PROPERTIES_DATA_SET'
+   pmc -u -b 0 'GET TIME_STATUS_NP'
+   pmc -u -b 0 'GET GRANDMASTER_SETTINGS_NP'
+   ```
+
+3. Compare the switch's UTC-offset/timescale interpretation (`currentUtcOffset`,
+   `currentUtcOffsetValid`, PTP-vs-ARB time scale behavior) to what the master
+   is announcing.
+4. Confirm no second grandmaster is visible on that segment/domain and BMCA
+   state on the switch is what you expect.
+
+Background: linuxptp behavior differs by timestamping mode when acting as
+domain server. In software timestamping mode, `ptp4l` announces Arbitrary
+timescale (effectively UTC there), while in hardware timestamping mode it
+announces PTP timescale and relies on `phc2sys` to maintain UTC/TAI offset
+handling for system clock users.
+
+In Clustertime hardware mode:
+- **Master** runs `phc2sys -s CLOCK_REALTIME -c <iface> -O 0` to discipline PHC
+  from `CLOCK_REALTIME`.
+- **Relay** runs `phc2sys` to discipline `CLOCK_REALTIME` from upstream PHC.
+
+#### Why this can happen even when *all nodes use hardware timestamping*
+
+You can still see "master off by ~20 seconds while relays agree with each
+other" when relay downstream service is based on `CLOCK_REALTIME` but relay
+upstream lock in hardware mode is only disciplining PHC.
+
+In that case:
+- Relay upstream `ptp4l` can be healthy against master (PHC aligned).
+- Relay downstream can still advertise local system time if `CLOCK_REALTIME`
+  is not being steered from PHC.
+- Multiple relays may match each other (same OS/NTP behavior) yet all differ
+  from what a direct master-attached switch reports.
+
+Use `phc2sys` on each relay in hardware mode so PHC lock is transferred to
+`CLOCK_REALTIME` before downstream multicast is served.
+
+If relay logs show `phc2sys: Waiting for ptp4l...` continuously while upstream
+`ptp4l` already prints stable `rms/freq/delay` lines, verify `phc2sys` is using
+the same `uds_address` as relay upstream `ptp4l` (Clustertime passes the
+generated upstream config file to `phc2sys` so the addresses match).
