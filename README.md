@@ -493,3 +493,83 @@ For Raspberry Pi 5 specifically: if you need hardware timestamping, run relay in
 dual-interface mode using two physical NICs (for example onboard `eth0` + a USB
 Ethernet adapter). Single-interface relay mode relies on macvlan virtual
 interfaces and is not a reliable hardware timestamping path on `macb`.
+
+### Troubleshooting a consistent ~20 second offset on a switch
+
+If relay nodes are tightly in sync with each other, but a switch directly
+connected to the **master multicast** segment is consistently off by roughly
+20 seconds, focus on announce/timescale interpretation on that switch path
+instead of relay lock quality.
+
+Typical pattern:
+- Relay unicast lock to master looks healthy (normal `rms/freq/delay` lines).
+- Relay multicast clients look correct.
+- One switch on the master-facing multicast segment shows a stable seconds-level
+  offset (for example ~20 s).
+
+That pattern usually points to one of:
+- Profile mismatch (PTPv2 default profile vs 802.1AS/gPTP expectations)
+- UTC/TAI handling mismatch on the switch
+- Domain/profile settings applied differently on that interface or VLAN
+
+Quick checks:
+1. Verify the switch is in the same PTP profile/domain as the master.
+2. Inspect master announce/status datasets from a Linux host on that segment:
+
+   ```bash
+   pmc -u -b 0 'GET TIME_PROPERTIES_DATA_SET'
+   pmc -u -b 0 'GET TIME_STATUS_NP'
+   pmc -u -b 0 'GET GRANDMASTER_SETTINGS_NP'
+   ```
+
+3. Compare the switch's UTC-offset/timescale interpretation (`currentUtcOffset`,
+   `currentUtcOffsetValid`, PTP-vs-ARB time scale behavior) to what the master
+   is announcing.
+4. Confirm no second grandmaster is visible on that segment/domain and BMCA
+   state on the switch is what you expect.
+
+Background: linuxptp behavior differs by timestamping mode when acting as
+domain server. In software timestamping mode, `ptp4l` announces Arbitrary
+timescale (effectively UTC there), while in hardware timestamping mode it
+announces PTP timescale and relies on `phc2sys` to maintain UTC/TAI offset
+handling for system clock users.
+
+In Clustertime hardware mode:
+- **Master** runs `phc2sys -f <master.conf> -s CLOCK_REALTIME -c <iface> -O 0`
+  so master PHC tracks `CLOCK_REALTIME` directly (same timescale on host).
+- **Relay** runs `phc2sys -f <upstream.conf> -s <up_iface> -c CLOCK_REALTIME -O 0`
+  so relay `CLOCK_REALTIME` follows upstream PHC without UTC/TAI reinterpretation.
+
+#### Why this can happen even when *all nodes use hardware timestamping*
+
+You can still see "master off by ~20 seconds while relays agree with each
+other" when relay downstream service is based on `CLOCK_REALTIME` but relay
+upstream lock in hardware mode is only disciplining PHC.
+
+In that case:
+- Relay upstream `ptp4l` can be healthy against master (PHC aligned).
+- Relay downstream can still advertise local system time if `CLOCK_REALTIME`
+  is not being steered from PHC.
+- Multiple relays may match each other (same OS/NTP behavior) yet all differ
+  from what a direct master-attached switch reports.
+
+Use `phc2sys` on each relay in hardware mode so PHC lock is transferred to
+`CLOCK_REALTIME` before downstream multicast is served.
+
+If relay `phc2sys` hovers around ~37-second offsets or jumps between near-zero
+and ~37 seconds, that usually indicates UTC/TAI reinterpretation mismatch.
+Relay sidecars therefore use explicit `-O 0` to keep PHC and `CLOCK_REALTIME`
+in the same timescale on the relay host.
+
+`phc2sys` offset logs are in **nanoseconds**. For example, an offset around
+`36889711156` means ~36.9 seconds, which is typically a UTC/TAI context issue
+rather than a normal steady-state servo error.
+
+If you see `freq +100000000` or `-100000000` for long periods, the servo is
+railed at its configured frequency limit and still trying to recover a large
+offset. Clustertime enables `-S 1.0` on phc2sys sidecars so second-level
+startup errors can be stepped quickly instead of taking minutes to slew down.
+
+By contrast, offsets in the low microseconds-to-tens-of-microseconds range
+(`~5,000` to `~30,000` ns) that trend downward after `SLAVE` lock are expected
+during convergence and usually indicate healthy phc2sys behavior.
