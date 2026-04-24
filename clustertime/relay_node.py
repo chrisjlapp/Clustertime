@@ -84,8 +84,6 @@ def run_relay(cfg: ClusterTimeConfig) -> None:
                 name="phc2sys-upstream",
                 cmd=[
                     "/usr/sbin/phc2sys",
-                    "-f",
-                    paths["upstream"],
                     "-s",
                     up_iface,
                     "-c",
@@ -101,9 +99,8 @@ def run_relay(cfg: ClusterTimeConfig) -> None:
         )
         log.info(
             "Enabled phc2sys on relay upstream interface %s "
-            "(hardware timestamp mode) to discipline CLOCK_REALTIME via %s.",
+            "(hardware timestamp mode) to discipline CLOCK_REALTIME.",
             up_iface,
-            paths["upstream"],
         )
     elif upstream_ts:
         log.info(

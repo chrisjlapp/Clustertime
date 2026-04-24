@@ -45,19 +45,15 @@ def run_master(cfg: ClusterTimeConfig) -> None:
     )
     master_ts = _read_time_stamping_mode(master_conf)
     if master_ts == "hardware":
-        # Keep the master PHC aligned to system CLOCK_REALTIME so generated
-        # Sync timestamps reflect the intended free-running system clock source.
         mgr.add(
             ManagedProcess(
                 name="phc2sys-master",
                 cmd=[
                     "/usr/sbin/phc2sys",
-                    "-f",
-                    master_conf,
                     "-s",
-                    "CLOCK_REALTIME",
-                    "-c",
                     cfg.interface,
+                    "-c",
+                    "CLOCK_REALTIME",
                     "-O",
                     "0",
                     "-S",
@@ -68,7 +64,7 @@ def run_master(cfg: ClusterTimeConfig) -> None:
             )
         )
         log.info(
-            "Enabled phc2sys on master interface %s to discipline PHC from CLOCK_REALTIME.",
+            "Enabled phc2sys on master interface %s to discipline CLOCK_REALTIME from PHC.",
             cfg.interface,
         )
 
@@ -79,26 +75,6 @@ def run_master(cfg: ClusterTimeConfig) -> None:
     )
 
     _watch_loop(mgr)
-
-
-def _warn_if_master_timescale_needs_validation(cfg: ClusterTimeConfig) -> None:
-    """
-    Flag a common UTC/TAI pitfall for direct multicast clients.
-
-    linuxptp advertises different time-scale semantics depending on timestamping
-    mode when the node is the domain server. Mixed client expectations on the
-    master multicast segment can appear as a stable seconds-level offset.
-    """
-    mode = (cfg.ptp.time_stamping or "auto").strip().lower()
-    if mode == "software":
-        return
-    log.warning(
-        "Master ptp.time_stamping=%s. Direct multicast clients (for example "
-        "switches) should be validated for UTC/TAI interpretation using "
-        "`pmc GET TIME_PROPERTIES_DATA_SET` and `GET TIME_STATUS_NP` on this "
-        "segment if you observe stable second-level offsets.",
-        mode,
-    )
 
 
 def _read_time_stamping_mode(conf_path: str) -> Optional[str]:
