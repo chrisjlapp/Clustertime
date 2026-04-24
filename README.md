@@ -549,3 +549,8 @@ In that case:
 
 Use `phc2sys` on each relay in hardware mode so PHC lock is transferred to
 `CLOCK_REALTIME` before downstream multicast is served.
+
+If relay logs show `phc2sys: Waiting for ptp4l...` continuously while upstream
+`ptp4l` already prints stable `rms/freq/delay` lines, verify `phc2sys` is using
+the same `uds_address` as relay upstream `ptp4l` (Clustertime passes the
+generated upstream config file to `phc2sys` so the addresses match).
