@@ -570,3 +570,7 @@ If you see `freq +100000000` or `-100000000` for long periods, the servo is
 railed at its configured frequency limit and still trying to recover a large
 offset. Clustertime enables `-S 1.0` on phc2sys sidecars so second-level
 startup errors can be stepped quickly instead of taking minutes to slew down.
+
+By contrast, offsets in the low microseconds-to-tens-of-microseconds range
+(`~5,000` to `~30,000` ns) that trend downward after `SLAVE` lock are expected
+during convergence and usually indicate healthy phc2sys behavior.
