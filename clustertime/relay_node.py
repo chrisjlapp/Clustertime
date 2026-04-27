@@ -107,6 +107,14 @@ def run_relay(cfg: ClusterTimeConfig) -> None:
             "Relay upstream time_stamping=%s; phc2sys sidecar not required.",
             upstream_ts,
         )
+    _maybe_add_downstream_phc_sync_processes(
+        mgr=mgr,
+        paths=paths,
+        up_iface=up_iface,
+        down_ifaces=down_ifaces,
+        upstream_ts=upstream_ts,
+    )
+
     for idx, down_iface in enumerate(down_ifaces):
         conf_key = f"downstream:{down_iface}"
         mgr.add(
@@ -259,6 +267,71 @@ def _derive_clock_identity_from_master_mac(master_ip: str) -> Optional[str]:
     clock_id_octets = mac_octets[:3] + ["ff", "fe"] + mac_octets[3:]
     compact = "".join(clock_id_octets)
     return f"{compact[:6]}.{compact[6:10]}.{compact[10:]}"
+
+
+def _maybe_add_downstream_phc_sync_processes(
+    mgr: ProcessManager,
+    paths: dict[str, str],
+    up_iface: str,
+    down_ifaces: list[str],
+    upstream_ts: Optional[str],
+) -> None:
+    if upstream_ts != "hardware":
+        return
+
+    up_phc = _iface_phc_name(up_iface)
+    for idx, down_iface in enumerate(down_ifaces):
+        conf_key = f"downstream:{down_iface}"
+        downstream_ts = _read_time_stamping_mode(paths.get(conf_key, ""))
+        if downstream_ts != "hardware":
+            continue
+        down_phc = _iface_phc_name(down_iface)
+        if up_phc and down_phc and up_phc == down_phc:
+            log.info(
+                "Skipping downstream PHC sync for %s: shares %s with upstream %s.",
+                down_iface,
+                up_phc,
+                up_iface,
+            )
+            continue
+
+        mgr.add(
+            ManagedProcess(
+                name=f"phc2sys-phc-sync-{idx}",
+                cmd=[
+                    "/usr/sbin/phc2sys",
+                    "-s",
+                    up_iface,
+                    "-c",
+                    down_iface,
+                    "-O",
+                    "0",
+                    "-S",
+                    "1.0",
+                    "-m",
+                ],
+                log_prefix=f"phc2sys[phc-sync:{up_iface}->{down_iface}]",
+            )
+        )
+        log.info(
+            "Enabled downstream PHC sync: %s -> %s (hardware timestamp mode).",
+            up_iface,
+            down_iface,
+        )
+
+
+def _iface_phc_name(iface: str) -> Optional[str]:
+    ptp_dir = f"/sys/class/net/{iface}/device/ptp"
+    if not os.path.isdir(ptp_dir):
+        return None
+    try:
+        entries = [name for name in os.listdir(ptp_dir) if name.startswith("ptp")]
+    except OSError:
+        return None
+    if not entries:
+        return None
+    # An interface should map to a single PHC; choose the first deterministic entry.
+    return sorted(entries)[0]
 
 
 def _read_time_stamping_mode(conf_path: str) -> Optional[str]:
